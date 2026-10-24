@@ -249,7 +249,7 @@ const A = window.A = {
     } catch (x) {
       fails++; S = null;
       const code = x.code || '';
-      $('#le').textContent = x.m || (/invalid-credential|wrong-password|user-not-found|invalid-email/.test(code) ? 'Email atau password salah.' : /network/.test(code) ? 'Tidak ada koneksi internet.' : 'Gagal masuk: ' + (code || x.message || 'terjadi kesalahan'));
+      $('#le').textContent = x.m || (/invalid-credential|wrong-password|user-not-found|invalid-email/.test(code) ? 'Email atau password salah.' : /network/.test(code) ? 'Tidak ada koneksi internet.' : /permission-denied/.test(code) ? 'Akses ditolak Firestore. Pastikan aturan keamanan terbaru sudah di-Publish dan dokumen admins/{UID} sudah dibuat.' : 'Gagal masuk: ' + (code || x.message || 'terjadi kesalahan'));
       await new Promise(r => setTimeout(r, Math.min(fails * 700, 5000)));
     }
     btn.disabled = false; btn.textContent = 'Masuk';
