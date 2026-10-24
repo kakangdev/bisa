@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 #root{font-family:Inter,sans-serif}
 .inp{width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:.5rem;font-weight:400;font-size:.875rem;background:#fff}
@@ -163,6 +164,7 @@ async function seed() { // Data dummy: HANYA saat IS_PREVIEW
     s1: {siswaId:'1001', kelas:'7A', tanggal:today(), topik:'Kesulitan belajar matematika', jenis:'Konseling Individu', tingkat:'Sedang', tindak:'Pendampingan belajar', status:'Proses'},
     s2: {siswaId:'1002', kelas:'8B', tanggal:today(), topik:'Sering terlambat masuk kelas', jenis:'Konseling Individu', tingkat:'Berat', tindak:'', status:'Baru'}
   };
+  mem.kelas = {k1:{nama:'7A', walikelas:'Bapak Dedi Hartono'}, k2:{nama:'8B', walikelas:''}};
   mem.pengaturan = {sekolah: {namaSekolah:'SMP Contoh Nusantara', tahunAjaran:'2026/2027'}};
 }
 
@@ -170,7 +172,7 @@ async function seed() { // Data dummy: HANYA saat IS_PREVIEW
 let S = null, D = {}, unsubs = [], charts = [], view = 'dashboard', sel = null, Q = '', mu = null, mt = null, MS = [], fails = 0, mode = 'admin';
 const R = {from: ym(new Date()) + '-01', to: today()};
 const g = () => S?.role === 'gurubk';
-const resetD = () => D = {users:[], agenda_bk:[], catatan_pribadi:[], bimbingan_sesi:[], chats:[], sekolah:{}};
+const resetD = () => D = {users:[], agenda_bk:[], catatan_pribadi:[], bimbingan_sesi:[], chats:[], kelas:[], sekolah:{}};
 resetD();
 const nm = id => D.users.find(u => u.id === id)?.nama || '-';
 const ROLE = () => ({gurubk:'Guru BK', walikelas:'Walikelas ' + (S.kelas || ''), siswa:'Siswa ' + (S.kelas || '')})[S.role];
@@ -181,7 +183,7 @@ const M = {
 };
 
 // ---------- Modal & form ----------
-const show = h => { $('#mb').innerHTML = h; $('#md').classList.remove('hidden'); };
+const show = h => { $('#mb').classList.remove('!max-w-2xl'); $('#mb').innerHTML = h; $('#md').classList.remove('hidden'); };
 const info = (t, h) => show(`<h3 class="font-bold text-lg mb-2">${e(t)}</h3><div class="text-sm text-gray-600 mb-4">${h}</div><div class="flex justify-end"><button onclick="A.close()" class="btn1">Tutup</button></div>`);
 let Y; const ask = (t, b, fn) => { Y = fn; show(`<h3 class="font-bold text-lg mb-2">${e(t)}</h3><p class="text-sm text-gray-600 mb-4">${e(b)}</p><div class="flex justify-end gap-2"><button onclick="A.close()" class="btn2">Batal</button><button onclick="A.yes()" class="btn1">Ya, lanjutkan</button></div>`); };
 const form = (title, fs, vals, save) => {
@@ -214,7 +216,7 @@ const sv = async (c, id, v) => {
 
 // ---------- Aksi (dipanggil dari HTML) ----------
 const A = window.A = {
-  close: () => $('#md').classList.add('hidden'),
+  close: () => { $('#md').classList.add('hidden'); $('#mb').classList.remove('!max-w-2xl'); },
   yes: async () => { A.close(); try { await Y(); } catch (x) { toast('Gagal: ' + (x.code || x.message), 1); } },
   sb: () => { $('#sb').classList.toggle('-translate-x-full'); $('#ov').classList.toggle('hidden'); },
   go: k => { view = k; if (innerWidth < 768 && !$('#sb').classList.contains('-translate-x-full')) A.sb(); render(); },
@@ -263,15 +265,15 @@ const A = window.A = {
   new: c => form('Tambah ' + FD(c)[0], FD(c)[1], {tanggal:today()}, v => sv(c, null, v)),
   edit: (c, id) => form('Ubah ' + FD(c)[0], FD(c)[1], D[c].find(x => x.id === id) || {}, v => sv(c, id, v)),
   rm: (c, id) => ask('Hapus data ini?', 'Data yang dihapus tidak dapat dikembalikan.', async () => { await DB.del(c, id); toast('Terhapus'); }),
-  addSiswa: () => form('Tambah Siswa', [f('nama','Nama lengkap'), f('nis','NIS (huruf/angka, 3-20 karakter)'), f('kelas','Kelas'), f('jk','Jenis kelamin','select',['L','P'])], {}, async v => {
+  addSiswa: () => D.kelas.length ? form('Tambah Siswa', [f('nama','Nama lengkap'), f('nis','NIS (huruf/angka, 3-20 karakter)'), f('kelas','Kelas','select',kelasOpt()), f('jk','Jenis kelamin','select',['L','P'])], {}, async v => {
     if (!/^[A-Za-z0-9]{3,20}$/.test(v.nis)) return 'NIS harus 3-20 huruf/angka tanpa spasi.';
     if (await DB.get('users', v.nis)) return 'NIS sudah terdaftar.';
     const pw = rnd(3), salt = rnd(8), token = rnd(16);
     await DB.set('users', v.nis, {nama:v.nama, nis:v.nis, kelas:v.kelas, jk:v.jk, aktif:true, salt, passwordHash:await hx(pw, salt), chatToken:token});
     await DB.set('chats', token, {siswaId:v.nis, nama:v.nama, kelas:v.kelas, lastMessage:'', lastTime:0, status:'Selesai'});
     setTimeout(() => info('Siswa ditambahkan', `Password awal untuk <b>${e(v.nama)}</b>:<div class="my-2 text-xl font-mono font-bold text-blue-700">${pw}</div>Catat dan berikan ke siswa. Password ini tidak ditampilkan lagi.`), 50);
-  }),
-  editSiswa: id => { const u = D.users.find(x => x.id === id); form('Ubah Siswa', [f('nama','Nama lengkap'), f('kelas','Kelas'), f('jk','Jenis kelamin','select',['L','P']), f('s','Status','select',['Aktif','Nonaktif'])], {...u, s:u.aktif === false ? 'Nonaktif' : 'Aktif'}, async v => {
+  }) : info('Belum ada kelas', 'Tambahkan kelas terlebih dahulu di menu Pengaturan > Data Kelas.'),
+  editSiswa: id => { const u = D.users.find(x => x.id === id); form('Ubah Siswa', [f('nama','Nama lengkap'), f('kelas','Kelas','select',kelasOpt(u.kelas)), f('jk','Jenis kelamin','select',['L','P']), f('s','Status','select',['Aktif','Nonaktif'])], {...u, s:u.aktif === false ? 'Nonaktif' : 'Aktif'}, async v => {
     await DB.set('users', id, {nama:v.nama, kelas:v.kelas, jk:v.jk, aktif:v.s === 'Aktif'}); await DB.set('chats', u.chatToken, {nama:v.nama, kelas:v.kelas}); toast('Tersimpan');
   }); },
   reset: id => ask('Reset password?', 'Password baru akan dibuat dan password lama tidak berlaku lagi.', async () => {
@@ -289,6 +291,72 @@ const A = window.A = {
       await DB.add(`chats/${tok}/messages`, {pengirim:sis ? 'siswa' : 'guru', teks:t, waktu:Date.now()});
       await DB.set('chats', tok, {lastMessage:t, lastTime:Date.now(), status:sis ? 'Menunggu Balasan' : 'Aktif'});
     } catch (x) { toast('Pesan gagal terkirim: ' + (x.code || x.message), 1); }
+  },
+  addKelas: () => form('Tambah Kelas', [f('nama','Nama kelas (mis. 7A)'), f('walikelas','Nama walikelas (opsional)','text',null,false)], {}, async v => {
+    const n = v.nama.trim();
+    if (!/^[A-Za-z0-9 .\-\/]{1,20}$/.test(n)) return 'Nama kelas maksimal 20 karakter (huruf, angka, spasi, titik, strip).';
+    if (D.kelas.some(k => k.nama.toLowerCase() === n.toLowerCase())) return 'Kelas ini sudah ada.';
+    await DB.add('kelas', {nama:n, walikelas:(v.walikelas || '').trim()}); toast('Kelas ditambahkan');
+  }),
+  editKelas: id => { const k = D.kelas.find(x => x.id === id); form('Ubah Kelas ' + k.nama, [f('walikelas','Nama walikelas','text',null,false)], k, async v => { await DB.set('kelas', id, {walikelas:(v.walikelas || '').trim()}); toast('Tersimpan'); }); },
+  delKelas: id => {
+    const k = D.kelas.find(x => x.id === id), n = D.users.filter(u => u.kelas === k.nama).length;
+    if (n) return info('Kelas tidak bisa dihapus', `Masih ada ${n} siswa di kelas <b>${e(k.nama)}</b>. Pindahkan atau hapus siswanya terlebih dahulu.`);
+    ask('Hapus kelas?', `Kelas ${k.nama} akan dihapus.`, async () => { await DB.del('kelas', id); toast('Kelas dihapus'); });
+  },
+  tpl() {
+    const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet([['NIS', 'Nama', 'Kelas', 'JK']]);
+    for (let r = 2; r <= 501; r++) ws['A' + r] = {t:'s', v:'', z:'@'};
+    ws['!ref'] = 'A1:D501'; ws['!cols'] = [{wch:16}, {wch:32}, {wch:10}, {wch:6}]; XLSX.utils.book_append_sheet(wb, ws, 'Siswa');
+    const pt = XLSX.utils.aoa_to_sheet([['Petunjuk pengisian'], ['1. Isi data siswa mulai baris 2 pada sheet "Siswa". Jangan mengubah judul kolom.'], ['2. NIS: 3-20 huruf/angka tanpa spasi. Kolom NIS sudah berformat Teks agar angka 0 di depan tidak hilang.'], ['3. Kelas: harus sama dengan nama kelas pada sheet "Daftar Kelas". Tambahkan dulu di Pengaturan bila belum ada.'], ['4. JK: isi L atau P.'], ['5. Contoh baris: 1003 | Budi Santoso | 7A | L'], ['6. Maksimal 500 siswa per impor. NIS yang sudah terdaftar akan dilewati.']]);
+    pt['!cols'] = [{wch:100}]; XLSX.utils.book_append_sheet(wb, pt, 'Petunjuk');
+    const kl = XLSX.utils.aoa_to_sheet([['Daftar Kelas'], ...D.kelas.map(k => [k.nama])]); kl['!cols'] = [{wch:20}]; XLSX.utils.book_append_sheet(wb, kl, 'Daftar Kelas');
+    XLSX.writeFile(wb, 'template-import-siswa.xlsx');
+  },
+  impOpen() {
+    if (!D.kelas.length) return info('Belum ada kelas', 'Tambahkan kelas terlebih dahulu di menu Pengaturan > Data Kelas, lalu impor siswa.');
+    IMP = [];
+    show(`<h3 class="font-bold text-lg mb-3">Impor Siswa dari Excel</h3><ol class="text-sm space-y-4"><li><b>1. Unduh template</b>, lalu isi data siswa.<button onclick="A.tpl()" class="btn2 block mt-2"><i class="fa-solid fa-download mr-1"></i>Unduh template (.xlsx)</button></li><li><b>2. Pilih file</b> yang sudah diisi.<input type="file" id="xf" accept=".xlsx,.xls,.csv" class="inp" onchange="A.impFile(this.files[0])"></li></ol><div id="ip" class="mt-4"></div><div class="flex justify-end mt-4"><button onclick="A.close()" class="btn2">Tutup</button></div>`);
+    $('#mb').classList.add('!max-w-2xl');
+  },
+  async impFile(file) {
+    const box = $('#ip'); if (!file) return; IMP = [];
+    try {
+      const wb = XLSX.read(await file.arrayBuffer()), ws = wb.Sheets['Siswa'] || wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+      const hd = (rows[0] || []).map(x => String(x).trim().toLowerCase()), ix = ['nis', 'nama', 'kelas', 'jk'].map(k => hd.indexOf(k));
+      if (ix.includes(-1)) throw {m:'Judul kolom harus NIS, Nama, Kelas, JK. Gunakan template yang disediakan.'};
+      const body = rows.slice(1).filter(r => r.some(c => String(c).trim()));
+      if (!body.length) throw {m:'File tidak berisi data siswa.'};
+      if (body.length > 500) throw {m:'Maksimal 500 siswa per impor. Pecah file menjadi beberapa bagian.'};
+      const seen = new Set();
+      IMP = body.map((r, i) => {
+        const [nis, nama, kl, jk] = ix.map(j => String(r[j] ?? '').trim()), er = [];
+        if (!/^[A-Za-z0-9]{3,20}$/.test(nis)) er.push('NIS tidak valid'); else if (seen.has(nis)) er.push('NIS ganda di file'); else if (D.users.some(u => u.id === nis)) er.push('NIS sudah terdaftar');
+        seen.add(nis);
+        if (!nama) er.push('Nama kosong'); else if (nama.length > 100) er.push('Nama terlalu panjang');
+        const k = D.kelas.find(x => x.nama.toLowerCase() === kl.toLowerCase()); if (!k) er.push(`Kelas "${kl}" belum ada`);
+        const j = /^(l|laki.*)$/i.test(jk) ? 'L' : /^(p|perempuan)$/i.test(jk) ? 'P' : ''; if (!j) er.push('JK harus L atau P');
+        return {baris:i + 2, nis, nama, kelas:k ? k.nama : kl, jk:j, er};
+      });
+      const ok = IMP.filter(x => !x.er.length).length, bad = IMP.length - ok;
+      box.innerHTML = `<p class="text-sm mb-2"><b class="text-green-700">${ok} data valid</b>${bad ? `, <b class="text-red-600">${bad} data bermasalah</b> (akan dilewati)` : ''}.</p><div class="max-h-56 overflow-auto border rounded-lg"><table class="w-full text-xs tb"><thead><tr><th>Baris</th><th>NIS</th><th>Nama</th><th>Kelas</th><th>Keterangan</th></tr></thead><tbody>${[...IMP].sort((a, b) => b.er.length - a.er.length).slice(0, 100).map(s => `<tr><td>${s.baris}</td><td>${e(s.nis)}</td><td>${e(s.nama)}</td><td>${e(s.kelas)}</td><td class="${s.er.length ? 'text-red-600' : 'text-green-700'}">${s.er.length ? e(s.er.join(', ')) : 'Siap diimpor'}</td></tr>`).join('')}</tbody></table></div>${ok ? `<button id="ib" onclick="A.impGo()" class="btn1 w-full mt-3">Impor ${ok} siswa</button>` : ''}`;
+    } catch (x) { box.innerHTML = `<p class="text-sm text-red-600">${e(x.m || 'File tidak dapat dibaca. Pastikan formatnya .xlsx, .xls, atau .csv.')}</p>`; }
+  },
+  async impGo() {
+    const l = IMP.filter(x => !x.er.length), btn = $('#ib'), out = [['NIS', 'Nama', 'Kelas', 'Password awal']]; let ok = 0; btn.disabled = true;
+    try {
+      for (const s of l) {
+        btn.textContent = `Mengimpor ${ok + 1} dari ${l.length}...`;
+        const pw = rnd(3), salt = rnd(8), token = rnd(16);
+        await DB.set('users', s.nis, {nama:s.nama, nis:s.nis, kelas:s.kelas, jk:s.jk, aktif:true, salt, passwordHash:await hx(pw, salt), chatToken:token});
+        await DB.set('chats', token, {siswaId:s.nis, nama:s.nama, kelas:s.kelas, lastMessage:'', lastTime:0, status:'Selesai'});
+        out.push([s.nis, s.nama, s.kelas, pw]); ok++;
+      }
+    } catch (x) { toast('Impor terhenti: ' + (x.code || x.message), 1); }
+    if (ok) { const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(out); ws['!cols'] = [{wch:16}, {wch:32}, {wch:10}, {wch:16}]; XLSX.utils.book_append_sheet(wb, ws, 'Akun Siswa'); XLSX.writeFile(wb, 'akun-siswa-baru.xlsx'); }
+    IMP = [];
+    info('Impor selesai', `<b>${ok}</b> dari ${l.length} siswa berhasil diimpor.${ok ? '<br>File <b>akun-siswa-baru.xlsx</b> berisi password awal tiap siswa sudah diunduh. Simpan dengan aman, password tidak dapat dilihat lagi.' : ''}`);
   },
   rep: (k, v) => { R[k] = v; render(); },
   csv() {
@@ -310,6 +378,8 @@ const A = window.A = {
     } catch (x) { toast(x.m || 'Password lama salah atau sesi kedaluwarsa.', 1); }
   }
 };
+const kelasOpt = cur => { const n = D.kelas.map(k => k.nama); if (cur && !n.includes(cur)) n.push(cur); return n.sort((a, b) => a.localeCompare(b, 'id', {numeric:true})); };
+let IMP = [];
 const ctok = () => S.role === 'siswa' ? S.token : D.chats.find(c => c.id === sel)?.id;
 
 // ---------- Tampilan ----------
@@ -347,7 +417,7 @@ const V = {
   },
   siswa() {
     const q = Q.toLowerCase(), r = D.users.filter(u => (u.nama + u.nis + u.kelas).toLowerCase().includes(q)).sort((a, b) => (a.kelas || '').localeCompare(b.kelas || '') || (a.nama || '').localeCompare(b.nama || ''));
-    return hdr('Direktori Data Siswa', 'Identitas, kelas, dan akses login siswa.', g() ? '<button onclick="A.addSiswa()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Siswa</button>' : '') +
+    return hdr('Direktori Data Siswa', 'Identitas, kelas, dan akses login siswa.', g() ? '<div class="flex gap-2"><button onclick="A.impOpen()" class="btn2"><i class="fa-solid fa-file-excel mr-1"></i>Impor Excel</button><button onclick="A.addSiswa()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Siswa</button></div>' : '') +
       `<input id="q" class="inp !mt-0 mb-3 md:max-w-sm" placeholder="Cari nama, NIS, atau kelas" value="${e(Q)}" oninput="A.q(this.value)">` +
       tbl(['Nama', 'NIS', 'Kelas', 'JK', 'Status', g() ? 'Aksi' : ''], r.map(u => [e(u.nama), e(u.nis), e(u.kelas), e(u.jk), badge(u.aktif === false ? 'Nonaktif' : 'Aktif'), g() ? `<span class="whitespace-nowrap"><button onclick="A.editSiswa('${u.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.reset('${u.id}')" class="text-amber-600 mr-3" aria-label="Reset password"><i class="fa-solid fa-key"></i></button><button onclick="A.delSiswa('${u.id}')" class="text-red-500" aria-label="Hapus"><i class="fa-solid fa-trash"></i></button></span>` : '']), 'Belum ada data siswa.');
   },
@@ -384,6 +454,7 @@ const V = {
     return hdr('Pengaturan', adm ? 'Profil akun dan data sekolah.' : 'Profil siswa.') + `<div class="grid md:grid-cols-2 gap-4 max-w-4xl">
       <div class="card"><h3 class="font-bold mb-3">Profil</h3><dl class="text-sm space-y-2"><div class="flex justify-between"><dt class="text-gray-500">Nama</dt><dd>${e(S.nama)}</dd></div><div class="flex justify-between"><dt class="text-gray-500">Peran</dt><dd>${e(ROLE())}</dd></div>${adm ? `<div class="flex justify-between"><dt class="text-gray-500">Email</dt><dd>${e(S.email)}</dd></div>` : `<div class="flex justify-between"><dt class="text-gray-500">NIS</dt><dd>${e(S.nis)}</dd></div>`}</dl>${adm ? '' : '<p class="text-xs text-gray-500 mt-4">Lupa password? Minta Guru BK untuk mereset.</p>'}<button onclick="A.out()" class="btn2 mt-4"><i class="fa-solid fa-right-from-bracket mr-1"></i>Keluar</button></div>
       ${adm ? `<div class="card"><h3 class="font-bold mb-3">Ganti Password</h3><form onsubmit="A.pass(event)" class="space-y-3"><label class="block text-sm font-medium">Password lama<input name="lama" type="password" class="inp" required></label><label class="block text-sm font-medium">Password baru (min. 8 karakter)<input name="baru" type="password" class="inp" minlength="8" required></label><button class="btn1">Ganti password</button></form></div>` : ''}
+      ${g() ? `<div class="md:col-span-2"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Data Kelas</h3><button onclick="A.addKelas()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Kelas</button></div>${tbl(['Kelas', 'Walikelas', 'Jumlah Siswa', 'Aksi'], [...D.kelas].sort((a, b) => a.nama.localeCompare(b.nama, 'id', {numeric:true})).map(k => [e(k.nama), e(k.walikelas || '-'), D.users.filter(u => u.kelas === k.nama).length, `<span class="whitespace-nowrap"><button onclick="A.editKelas('${k.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.delKelas('${k.id}')" class="text-red-500" aria-label="Hapus"><i class="fa-solid fa-trash"></i></button></span>`]), 'Belum ada kelas. Tambahkan kelas agar data siswa bisa diisi.')}</div>` : ''}
       ${g() ? `<div class="card md:col-span-2"><h3 class="font-bold mb-3">Data Sekolah</h3><form onsubmit="A.saveSek(event)" class="grid sm:grid-cols-2 gap-3"><label class="text-sm font-medium">Nama sekolah<input name="namaSekolah" class="inp" required value="${e(D.sekolah.namaSekolah)}"></label><label class="text-sm font-medium">Tahun ajaran<input name="tahunAjaran" class="inp" required value="${e(D.sekolah.tahunAjaran)}" placeholder="2026/2027"></label><div class="sm:col-span-2"><button class="btn1">Simpan</button></div></form></div>` : ''}</div>`;
   }
 };
@@ -418,7 +489,7 @@ function start() {
   $('#bn').innerHTML = m.slice(0, 4).map(([k, l, i]) => `<a onclick="A.go('${k}')" data-k="${k}" class="bb"><i class="fa-solid fa-${i}"></i>${l.split(' ')[0]}</a>`).join('') + (m.length > 4 ? '<a onclick="A.sb()" class="bb"><i class="fa-solid fa-ellipsis"></i>Lainnya</a>' : '');
   const sb = (p, k, ww) => unsubs.push(DB.sub(p, r => { D[k] = r; render(); }, ww));
   sb('agenda_bk', 'agenda_bk');
-  if (st) { sb('users', 'users', w); sb('bimbingan_sesi', 'bimbingan_sesi', w); }
+  if (st) { sb('kelas', 'kelas'); sb('users', 'users', w); sb('bimbingan_sesi', 'bimbingan_sesi', w); }
   if (g()) { sb('catatan_pribadi', 'catatan_pribadi'); sb('chats', 'chats'); }
   DB.get('pengaturan', 'sekolah').then(s => { if (s) { D.sekolah = s; hd(); } }).catch(() => {});
   view = 'dashboard'; $('#login').classList.add('hidden'); $('#shell').classList.remove('hidden'); $('#pv').classList.toggle('hidden', !IS_PREVIEW); render();
