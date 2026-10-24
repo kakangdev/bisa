@@ -24,7 +24,12 @@
 .glass{background:rgba(255,255,255,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .tb th{text-align:left;padding:.65rem 1rem;background:#f8fafc;color:#64748b;font-weight:600;white-space:nowrap}
 .tb td{padding:.65rem 1rem;border-top:1px solid #f1f5f9;vertical-align:top}
-@media print{#sb,#hd,#bn,.noprint{display:none!important}}
+@media print{#sb,#hd,#bn,.noprint{display:none!important}
+html,body{height:auto!important;overflow:visible!important}
+body.pc #root{position:static!important;overflow:visible!important;background:#fff!important}
+body.pc #root>:not(#cards){display:none!important}
+body.pc #cards{position:static!important;overflow:visible!important}
+.cd{break-inside:avoid}}
 </style>
 </head>
 <body>
@@ -72,6 +77,7 @@
 </div>
 
 <div id="md" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4"><div id="mb" class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"></div></div>
+<div id="cards" class="hidden fixed inset-0 bg-white z-[65] overflow-y-auto"></div>
 <div id="ts" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-lg text-sm text-white shadow-lg"></div>
 </div>
 
@@ -172,7 +178,7 @@ async function seed() { // Data dummy: HANYA saat IS_PREVIEW
 let S = null, D = {}, unsubs = [], charts = [], view = 'dashboard', sel = null, Q = '', mu = null, mt = null, MS = [], fails = 0, mode = 'admin';
 const R = {from: ym(new Date()) + '-01', to: today()};
 const g = () => S?.role === 'gurubk';
-const resetD = () => D = {users:[], agenda_bk:[], catatan_pribadi:[], bimbingan_sesi:[], chats:[], kelas:[], sekolah:{}};
+const resetD = () => D = {users:[], agenda_bk:[], catatan_pribadi:[], bimbingan_sesi:[], chats:[], kelas:[], admins:[], sekolah:{}};
 resetD();
 const nm = id => D.users.find(u => u.id === id)?.nama || '-';
 const ROLE = () => ({gurubk:'Guru BK', walikelas:'Walikelas ' + (S.kelas || ''), siswa:'Siswa ' + (S.kelas || '')})[S.role];
@@ -358,6 +364,56 @@ const A = window.A = {
     IMP = [];
     info('Impor selesai', `<b>${ok}</b> dari ${l.length} siswa berhasil diimpor.${ok ? '<br>File <b>akun-siswa-baru.xlsx</b> berisi password awal tiap siswa sudah diunduh. Simpan dengan aman, password tidak dapat dilihat lagi.' : ''}`);
   },
+  cardOpen: () => show(`<h3 class="font-bold text-lg mb-2">Kartu Login Siswa</h3><p class="text-sm text-gray-600 mb-3">Password siswa disimpan terenkripsi sehingga tidak bisa ditampilkan. Saat kartu dibuat, <b>password siswa yang dipilih diganti dengan password baru</b> yang dicetak di kartu. Hanya siswa berstatus aktif yang diproses.</p><label class="block text-sm font-medium">Kelas<select id="ck" class="inp"><option value="">Semua kelas</option>${kelasOpt().map(k => `<option>${e(k)}</option>`).join('')}</select></label><div class="flex justify-end gap-2 mt-4"><button onclick="A.close()" class="btn2">Batal</button><button id="cb" onclick="A.cardGo()" class="btn1">Buat kartu</button></div>`),
+  async cardGo() {
+    const k = $('#ck').value, l = D.users.filter(u => u.aktif !== false && (!k || u.kelas === k)).sort((a, b) => (a.kelas || '').localeCompare(b.kelas || '', 'id', {numeric:true}) || (a.nama || '').localeCompare(b.nama || ''));
+    if (!l.length) return toast('Tidak ada siswa aktif pada pilihan ini', 1);
+    const btn = $('#cb'); btn.disabled = true; CARDS = [];
+    try {
+      for (const u of l) {
+        btn.textContent = `Memproses ${CARDS.length + 1} dari ${l.length}...`;
+        const pw = rnd(3), salt = rnd(8); await DB.set('users', u.id, {salt, passwordHash:await hx(pw, salt)}); CARDS.push({nama:u.nama, kelas:u.kelas, nis:u.nis || u.id, pw});
+      }
+    } catch (x) { toast('Proses terhenti: ' + (x.code || x.message), 1); }
+    A.close(); if (CARDS.length) showCards();
+  },
+  cardXls() {
+    const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet([['NIS', 'Nama', 'Kelas', 'Password'], ...CARDS.map(s => [s.nis, s.nama, s.kelas, s.pw])]);
+    ws['!cols'] = [{wch:16}, {wch:32}, {wch:10}, {wch:16}]; XLSX.utils.book_append_sheet(wb, ws, 'Akun Siswa'); XLSX.writeFile(wb, 'akun-login-siswa.xlsx');
+  },
+  cardClose() { CARDS = []; const c = $('#cards'); c.innerHTML = ''; c.classList.add('hidden'); document.body.classList.remove('pc'); },
+  addAdmin: () => form('Tambah Akun Guru', [f('nama','Nama lengkap'), f('email','Email','email'), f('role','Peran','select',[['gurubk','Guru BK'], ['walikelas','Walikelas']]), f('kelas','Kelas (wajib untuk Walikelas)','select',[['', '- Tidak ada -'], ...kelasOpt()],false)], {role:'gurubk'}, async v => {
+    const em = v.email.trim().toLowerCase(); if (v.role === 'walikelas' && !v.kelas) return 'Walikelas wajib memilih kelas.';
+    const pw = rnd(5), data = {nama:v.nama.trim(), email:em, role:v.role, kelas:v.role === 'walikelas' ? v.kelas : ''};
+    if (IS_PREVIEW) {
+      if (mem.admins[em]) return 'Email sudah terdaftar.';
+      const salt = rnd(8); await DB.set('admins', em, {...data, salt, passwordHash:await hx(pw, salt)});
+    } else {
+      const sec = F.initializeApp(firebaseConfig, 'sec' + Date.now()), sa = F.getAuth(sec);
+      try { const c = await F.createUserWithEmailAndPassword(sa, em, pw); await F.signOut(sa); await DB.set('admins', c.user.uid, data); }
+      catch (x) {
+        const m = {'auth/email-already-in-use':'Email sudah terdaftar di Firebase Authentication. Jika akun itu belum punya peran, buat dokumen admins/{UID} di konsol.', 'auth/invalid-email':'Format email tidak valid.', 'auth/admin-restricted-operation':'Pendaftaran akun dinonaktifkan. Aktifkan "Enable create (sign-up)" di Authentication > Settings > User actions.', 'auth/operation-not-allowed':'Metode Email/Password belum diaktifkan di Firebase Authentication.'};
+        if (m[x.code]) return m[x.code]; throw x;
+      } finally { F.deleteApp(sec).catch(() => {}); }
+    }
+    setTimeout(() => info('Akun guru dibuat', `Email: <b>${e(em)}</b><div class="my-2">Password awal:</div><div class="text-xl font-mono font-bold text-blue-700">${pw}</div>Berikan ke yang bersangkutan dan minta menggantinya di Pengaturan > Ganti Password. Password ini tidak ditampilkan lagi.`), 50);
+  }),
+  editAdmin: id => { const a = D.admins.find(x => x.id === id); form('Ubah Akun Guru', [f('nama','Nama lengkap'), f('role','Peran','select',[['gurubk','Guru BK'], ['walikelas','Walikelas']]), f('kelas','Kelas (wajib untuk Walikelas)','select',[['', '- Tidak ada -'], ...kelasOpt(a.kelas)],false)], a, async v => {
+    if (v.role === 'walikelas' && !v.kelas) return 'Walikelas wajib memilih kelas.';
+    await DB.set('admins', id, {nama:v.nama.trim(), role:v.role, kelas:v.role === 'walikelas' ? v.kelas : ''}); toast('Tersimpan');
+  }); },
+  delAdmin: id => {
+    const a = D.admins.find(x => x.id === id);
+    if (id === S.uid) return toast('Akun yang sedang dipakai tidak bisa dihapus.', 1);
+    if (a.role === 'gurubk' && D.admins.filter(x => x.role === 'gurubk').length <= 1) return toast('Harus tersisa minimal satu Guru BK.', 1);
+    ask('Cabut akses akun ini?', `${a.nama} tidak akan bisa masuk lagi. Akun emailnya tetap ada di Firebase Authentication dan bisa dihapus manual di konsol.`, async () => { await DB.del('admins', id); toast('Akses dicabut'); });
+  },
+  async resetAdmin(id) {
+    const a = D.admins.find(x => x.id === id);
+    if (!a.email) return toast('Email akun ini belum tercatat.', 1);
+    if (IS_PREVIEW) return toast('Mode preview: email reset tidak dikirim.');
+    try { await F.sendPasswordResetEmail(auth, a.email); toast('Email reset password dikirim ke ' + a.email); } catch (x) { toast('Gagal mengirim: ' + (x.code || x.message), 1); }
+  },
   rep: (k, v) => { R[k] = v; render(); },
   csv() {
     const safe = x => { const s = String(x ?? ''); return '"' + (/^[=+\-@]/.test(s) ? "'" + s : s).replace(/"/g, '""') + '"'; };
@@ -379,6 +435,12 @@ const A = window.A = {
   }
 };
 const kelasOpt = cur => { const n = D.kelas.map(k => k.nama); if (cur && !n.includes(cur)) n.push(cur); return n.sort((a, b) => a.localeCompare(b, 'id', {numeric:true})); };
+let CARDS = [];
+const showCards = () => {
+  const url = location.href.split('#')[0].split('?')[0], c = $('#cards');
+  c.innerHTML = `<div class="noprint sticky top-0 bg-white border-b px-4 py-3 flex flex-wrap gap-2 items-center z-10"><b class="mr-auto">${CARDS.length} kartu login</b><button onclick="print()" class="btn1"><i class="fa-solid fa-print mr-1"></i>Cetak</button><button onclick="A.cardXls()" class="btn2"><i class="fa-solid fa-file-excel mr-1"></i>Unduh Excel</button><button onclick="A.cardClose()" class="btn2">Tutup</button></div><p class="noprint text-xs text-amber-800 bg-amber-50 px-4 py-2">Password hanya tampil di halaman ini. Setelah ditutup, password tidak bisa dilihat lagi (hanya bisa direset).</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4">${CARDS.map(s => `<div class="cd border-2 border-dashed border-gray-400 rounded-lg p-4 text-sm"><div class="font-bold text-[#1a4b80]">${e(D.sekolah.namaSekolah || 'BISA')}</div><div class="text-xs text-gray-500 mb-2">Kartu Akses BISA - Buku Bimbingan Siswa Digital</div><div class="font-bold text-base">${e(s.nama)}</div><div class="text-gray-600 mb-2">Kelas ${e(s.kelas)}</div><div class="grid grid-cols-[4.5rem_1fr] gap-y-1"><span class="text-gray-500">NIS</span><b class="font-mono">${e(s.nis)}</b><span class="text-gray-500">Password</span><b class="font-mono">${e(s.pw)}</b></div><div class="text-[10px] text-gray-500 mt-2 break-all">Masuk lewat tab Siswa di ${e(url)}. Jaga kerahasiaan kartu ini.</div></div>`).join('')}</div>`;
+  c.classList.remove('hidden'); document.body.classList.add('pc');
+};
 let IMP = [];
 const ctok = () => S.role === 'siswa' ? S.token : D.chats.find(c => c.id === sel)?.id;
 
@@ -417,7 +479,7 @@ const V = {
   },
   siswa() {
     const q = Q.toLowerCase(), r = D.users.filter(u => (u.nama + u.nis + u.kelas).toLowerCase().includes(q)).sort((a, b) => (a.kelas || '').localeCompare(b.kelas || '') || (a.nama || '').localeCompare(b.nama || ''));
-    return hdr('Direktori Data Siswa', 'Identitas, kelas, dan akses login siswa.', g() ? '<div class="flex gap-2"><button onclick="A.impOpen()" class="btn2"><i class="fa-solid fa-file-excel mr-1"></i>Impor Excel</button><button onclick="A.addSiswa()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Siswa</button></div>' : '') +
+    return hdr('Direktori Data Siswa', 'Identitas, kelas, dan akses login siswa.', g() ? '<div class="flex flex-wrap gap-2"><button onclick="A.cardOpen()" class="btn2"><i class="fa-solid fa-id-card mr-1"></i>Kartu Login</button><button onclick="A.impOpen()" class="btn2"><i class="fa-solid fa-file-excel mr-1"></i>Impor Excel</button><button onclick="A.addSiswa()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Siswa</button></div>' : '') +
       `<input id="q" class="inp !mt-0 mb-3 md:max-w-sm" placeholder="Cari nama, NIS, atau kelas" value="${e(Q)}" oninput="A.q(this.value)">` +
       tbl(['Nama', 'NIS', 'Kelas', 'JK', 'Status', g() ? 'Aksi' : ''], r.map(u => [e(u.nama), e(u.nis), e(u.kelas), e(u.jk), badge(u.aktif === false ? 'Nonaktif' : 'Aktif'), g() ? `<span class="whitespace-nowrap"><button onclick="A.editSiswa('${u.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.reset('${u.id}')" class="text-amber-600 mr-3" aria-label="Reset password"><i class="fa-solid fa-key"></i></button><button onclick="A.delSiswa('${u.id}')" class="text-red-500" aria-label="Hapus"><i class="fa-solid fa-trash"></i></button></span>` : '']), 'Belum ada data siswa.');
   },
@@ -455,6 +517,7 @@ const V = {
       <div class="card"><h3 class="font-bold mb-3">Profil</h3><dl class="text-sm space-y-2"><div class="flex justify-between"><dt class="text-gray-500">Nama</dt><dd>${e(S.nama)}</dd></div><div class="flex justify-between"><dt class="text-gray-500">Peran</dt><dd>${e(ROLE())}</dd></div>${adm ? `<div class="flex justify-between"><dt class="text-gray-500">Email</dt><dd>${e(S.email)}</dd></div>` : `<div class="flex justify-between"><dt class="text-gray-500">NIS</dt><dd>${e(S.nis)}</dd></div>`}</dl>${adm ? '' : '<p class="text-xs text-gray-500 mt-4">Lupa password? Minta Guru BK untuk mereset.</p>'}<button onclick="A.out()" class="btn2 mt-4"><i class="fa-solid fa-right-from-bracket mr-1"></i>Keluar</button></div>
       ${adm ? `<div class="card"><h3 class="font-bold mb-3">Ganti Password</h3><form onsubmit="A.pass(event)" class="space-y-3"><label class="block text-sm font-medium">Password lama<input name="lama" type="password" class="inp" required></label><label class="block text-sm font-medium">Password baru (min. 8 karakter)<input name="baru" type="password" class="inp" minlength="8" required></label><button class="btn1">Ganti password</button></form></div>` : ''}
       ${g() ? `<div class="md:col-span-2"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Data Kelas</h3><button onclick="A.addKelas()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Kelas</button></div>${tbl(['Kelas', 'Walikelas', 'Jumlah Siswa', 'Aksi'], [...D.kelas].sort((a, b) => a.nama.localeCompare(b.nama, 'id', {numeric:true})).map(k => [e(k.nama), e(k.walikelas || '-'), D.users.filter(u => u.kelas === k.nama).length, `<span class="whitespace-nowrap"><button onclick="A.editKelas('${k.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.delKelas('${k.id}')" class="text-red-500" aria-label="Hapus"><i class="fa-solid fa-trash"></i></button></span>`]), 'Belum ada kelas. Tambahkan kelas agar data siswa bisa diisi.')}</div>` : ''}
+      ${g() ? `<div class="md:col-span-2"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Akun Guru</h3><button onclick="A.addAdmin()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Akun</button></div>${tbl(['Nama', 'Email', 'Peran', 'Kelas', 'Aksi'], [...D.admins].sort((a, b) => (a.nama || '').localeCompare(b.nama || '')).map(a => [e(a.nama) + (a.id === S.uid ? ' <span class="text-xs text-gray-400">(Anda)</span>' : ''), e(a.email || '-'), a.role === 'gurubk' ? 'Guru BK' : 'Walikelas', e(a.kelas || '-'), a.id === S.uid ? '' : `<span class="whitespace-nowrap"><button onclick="A.editAdmin('${a.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.resetAdmin('${a.id}')" class="text-amber-600 mr-3" aria-label="Kirim reset password"><i class="fa-solid fa-key"></i></button><button onclick="A.delAdmin('${a.id}')" class="text-red-500" aria-label="Cabut akses"><i class="fa-solid fa-user-slash"></i></button></span>`]), 'Belum ada akun guru.')}</div>` : ''}
       ${g() ? `<div class="card md:col-span-2"><h3 class="font-bold mb-3">Data Sekolah</h3><form onsubmit="A.saveSek(event)" class="grid sm:grid-cols-2 gap-3"><label class="text-sm font-medium">Nama sekolah<input name="namaSekolah" class="inp" required value="${e(D.sekolah.namaSekolah)}"></label><label class="text-sm font-medium">Tahun ajaran<input name="tahunAjaran" class="inp" required value="${e(D.sekolah.tahunAjaran)}" placeholder="2026/2027"></label><div class="sm:col-span-2"><button class="btn1">Simpan</button></div></form></div>` : ''}</div>`;
   }
 };
@@ -490,7 +553,7 @@ function start() {
   const sb = (p, k, ww) => unsubs.push(DB.sub(p, r => { D[k] = r; render(); }, ww));
   sb('agenda_bk', 'agenda_bk');
   if (st) { sb('kelas', 'kelas'); sb('users', 'users', w); sb('bimbingan_sesi', 'bimbingan_sesi', w); }
-  if (g()) { sb('catatan_pribadi', 'catatan_pribadi'); sb('chats', 'chats'); }
+  if (g()) { sb('admins', 'admins'); sb('catatan_pribadi', 'catatan_pribadi'); sb('chats', 'chats'); }
   DB.get('pengaturan', 'sekolah').then(s => { if (s) { D.sekolah = s; hd(); } }).catch(() => {});
   view = 'dashboard'; $('#login').classList.add('hidden'); $('#shell').classList.remove('hidden'); $('#pv').classList.toggle('hidden', !IS_PREVIEW); render();
 }
