@@ -171,20 +171,30 @@ async function seed() { // Data dummy: HANYA saat IS_PREVIEW
     s2: {siswaId:'1002', kelas:'8B', tanggal:today(), topik:'Sering terlambat masuk kelas', jenis:'Konseling Individu', tingkat:'Berat', tindak:'', status:'Baru'}
   };
   mem.kelas = {k1:{nama:'7A', walikelas:'Bapak Dedi Hartono'}, k2:{nama:'8B', walikelas:''}};
-  mem.pengaturan = {sekolah: {namaSekolah:'SMP Contoh Nusantara', tahunAjaran:'2026/2027'}};
+  mem.tatib = {t1:{pasal:'Terlambat masuk sekolah', poin:5, tingkat:'Ringan'}, t2:{pasal:'Perkelahian', poin:50, tingkat:'Berat'}};
+  mem.kasus = {
+    k1: {siswaId:'1001', nama:'Rina Septiani', kelas:'7A', tanggal:today(), kategori:'Akademik', tingkat:'Sedang', ringkasan:'Sering tidak mengumpulkan tugas dan nilai menurun.', tahap:1, status:'Terbuka', pelanggaran:[{pasal:'Terlambat masuk sekolah', poin:5, tgl:today()}], dibuatOleh:'Bapak Dedi Hartono', updated:n},
+    k2: {siswaId:'1002', nama:'Ahmad Farhan', kelas:'8B', tanggal:today(), kategori:'Perilaku', tingkat:'Berat', ringkasan:'Terlibat perkelahian dengan teman sekelas.', tahap:2, status:'Terbuka', pelanggaran:[{pasal:'Perkelahian', poin:50, tgl:today()}], dibuatOleh:'Ibu Citra Lestari', updated:n}
+  };
+  mem['kasus/k1/langkah'] = {l1: {jenis:'identifikasi', tanggal:today(), uraian:'Nilai tugas menurun dua minggu terakhir.', oleh:'Bapak Dedi Hartono', tahap:1, akses:'semua', waktu:n-3600000}};
+  mem['kasus/k2/langkah'] = {l2: {jenis:'konseling', tanggal:today(), uraian:'Wawancara awal, siswa bersedia bercerita.', oleh:'Ibu Citra Lestari', tahap:2, akses:'bk', waktu:n-1800000}};
+  mem.pengaturan = {sekolah: {namaSekolah:'SMP Contoh Nusantara', tahunAjaran:'2026/2027', batasPoin:40}};
 }
 
 // ---------- State ----------
 let S = null, D = {}, unsubs = [], charts = [], view = 'dashboard', sel = null, Q = '', mu = null, mt = null, MS = [], fails = 0, mode = 'admin';
 const R = {from: ym(new Date()) + '-01', to: today()};
+let ks = null, KF = 'all', LK = [], ku = null, kt = null;
 const g = () => S?.role === 'gurubk';
-const resetD = () => D = {users:[], agenda_bk:[], catatan_pribadi:[], bimbingan_sesi:[], chats:[], kelas:[], admins:[], sekolah:{}};
+const resetD = () => D = {users:[], agenda_bk:[], catatan_pribadi:[], bimbingan_sesi:[], chats:[], kelas:[], admins:[], kasus:[], tatib:[], sekolah:{}};
 resetD();
 const nm = id => D.users.find(u => u.id === id)?.nama || '-';
-const ROLE = () => ({gurubk:'Guru BK', walikelas:'Walikelas ' + (S.kelas || ''), siswa:'Siswa ' + (S.kelas || '')})[S.role];
+const ROLE = () => ({gurubk:'Guru BK', wakasek:'Wakasek Kesiswaan', walikelas:'Walikelas ' + (S.kelas || ''), siswa:'Siswa ' + (S.kelas || '')})[S.role];
+const RL = {gurubk:'Guru BK', walikelas:'Walikelas', wakasek:'Wakasek Kesiswaan'};
 const M = {
-  gurubk: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['agenda','Agenda','calendar'],['konsultasi','Konsultasi','comments'],['catatan','Catatan Pribadi','note-sticky'],['monitoring','Monitoring Kasus','eye'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
-  walikelas: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['agenda','Agenda','calendar'],['konsultasi','Sesi Konseling','comments'],['monitoring','Monitoring Kasus','eye'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
+  gurubk: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['kasus','Kasus','folder-open'],['konsultasi','Konsultasi','comments'],['agenda','Agenda','calendar'],['catatan','Catatan Pribadi','note-sticky'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
+  walikelas: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['kasus','Kasus','folder-open'],['konsultasi','Sesi Konseling','comments'],['agenda','Agenda','calendar'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
+  wakasek: [['dashboard','Dashboard','table-cells-large'],['kasus','Kasus','folder-open'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['agenda','Agenda','calendar'],['pengaturan','Pengaturan','gear']],
   siswa: [['dashboard','Beranda','house'],['agenda','Agenda','calendar'],['konsultasi','Konsultasi','comments'],['pengaturan','Profil','user']]
 };
 
@@ -212,10 +222,12 @@ const sisOpt = blank => [...(blank ? [['', '- Tidak dipilih -']] : []), ...D.use
 const FD = c => ({
   agenda_bk: ['Agenda', [f('judul','Judul'), f('tanggal','Tanggal','date'), f('jam','Jam','time'), f('jenis','Jenis','select',['Konseling Individu','Konseling Kelompok','Kunjungan Rumah','Lainnya']), f('siswaId','Siswa (opsional)','select',sisOpt(1),false), f('status','Status','select',['Terjadwal','Selesai','Batal'])]],
   catatan_pribadi: ['Catatan', [f('judul','Judul'), f('tanggal','Tanggal','date'), f('kategori','Kategori','select',['Perkembangan','Perilaku','Akademik','Keluarga','Lainnya']), f('siswaId','Siswa (opsional)','select',sisOpt(1),false), f('isi','Isi catatan','textarea')]],
-  bimbingan_sesi: ['Sesi Bimbingan', [f('siswaId','Siswa','select',sisOpt()), f('tanggal','Tanggal','date'), f('topik','Topik / masalah'), f('jenis','Jenis','select',['Konseling Individu','Konseling Kelompok','Kunjungan Rumah','Lainnya']), f('tingkat','Tingkat','select',['Ringan','Sedang','Berat']), f('tindak','Tindak lanjut','textarea',null,false), f('status','Status','select',['Baru','Proses','Selesai'])]]
+  tatib: ['Tata Tertib', [f('pasal','Pasal / jenis pelanggaran'), f('poin','Poin','number'), f('tingkat','Tingkat','select',['Ringan','Sedang','Berat'])]],
+  bimbingan_sesi: ['Sesi Bimbingan', [f('siswaId','Siswa','select',sisOpt()), f('tanggal','Tanggal','date'), f('topik','Topik / masalah'), f('jenis','Jenis','select',['Konseling Individu','Konseling Kelompok','Kunjungan Rumah','Lainnya']), f('tingkat','Tingkat','select',['Ringan','Sedang','Berat']), f('tindak','Tindak lanjut','textarea',null,false), f('status','Status','select',['Baru','Proses','Selesai']), f('kasusId','Tautkan ke kasus (opsional)','select',[['', '- Tidak ditautkan -'], ...D.kasus.filter(k => k.status === 'Terbuka').map(k => [k.id, k.nama + ' - ' + k.kategori])],false)]]
 })[c];
 const sv = async (c, id, v) => {
   if (v.siswaId) v.kelas = D.users.find(u => u.id === v.siswaId)?.kelas || ''; else if ('siswaId' in v) v.kelas = '';
+  if ('poin' in v) v.poin = +v.poin || 0;
   if (id) await DB.set(c, id, v); else await DB.add(c, v);
   toast('Tersimpan');
 };
@@ -225,7 +237,7 @@ const A = window.A = {
   close: () => { $('#md').classList.add('hidden'); $('#mb').classList.remove('!max-w-2xl'); },
   yes: async () => { A.close(); try { await Y(); } catch (x) { toast('Gagal: ' + (x.code || x.message), 1); } },
   sb: () => { $('#sb').classList.toggle('-translate-x-full'); $('#ov').classList.toggle('hidden'); },
-  go: k => { view = k; if (innerWidth < 768 && !$('#sb').classList.contains('-translate-x-full')) A.sb(); render(); },
+  go: k => { view = k; if (k === 'kasus') ks = null; if (innerWidth < 768 && !$('#sb').classList.contains('-translate-x-full')) A.sb(); render(); },
   q: v => { Q = v; render(); const i = $('#q'); i.focus(); i.setSelectionRange(v.length, v.length); },
   tab: m => {
     mode = m; $('#lbU').textContent = m === 'admin' ? 'Email' : 'NIS'; $('#lu').type = m === 'admin' ? 'email' : 'text'; $('#le').textContent = '';
@@ -263,7 +275,7 @@ const A = window.A = {
     btn.disabled = false; btn.textContent = 'Masuk';
   },
   async out() {
-    unsubs.forEach(u => u()); unsubs = []; mu?.(); mu = null; mt = null; resetD(); S = null; sel = null; Q = ''; view = 'dashboard';
+    unsubs.forEach(u => u()); unsubs = []; mu?.(); mu = null; mt = null; ku?.(); ku = null; kt = null; ks = null; LK = []; resetD(); S = null; sel = null; Q = ''; view = 'dashboard';
     if (!IS_PREVIEW && auth) await F.signOut(auth);
     $('#shell').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#lp').value = '';
     if (innerWidth < 768 && !$('#sb').classList.contains('-translate-x-full')) A.sb();
@@ -382,7 +394,7 @@ const A = window.A = {
     ws['!cols'] = [{wch:16}, {wch:32}, {wch:10}, {wch:16}]; XLSX.utils.book_append_sheet(wb, ws, 'Akun Siswa'); XLSX.writeFile(wb, 'akun-login-siswa.xlsx');
   },
   cardClose() { CARDS = []; const c = $('#cards'); c.innerHTML = ''; c.classList.add('hidden'); document.body.classList.remove('pc'); },
-  addAdmin: () => form('Tambah Akun Guru', [f('nama','Nama lengkap'), f('email','Email','email'), f('role','Peran','select',[['gurubk','Guru BK'], ['walikelas','Walikelas']]), f('kelas','Kelas (wajib untuk Walikelas)','select',[['', '- Tidak ada -'], ...kelasOpt()],false)], {role:'gurubk'}, async v => {
+  addAdmin: () => form('Tambah Akun Guru', [f('nama','Nama lengkap'), f('email','Email','email'), f('role','Peran','select',[['gurubk','Guru BK'], ['walikelas','Walikelas'], ['wakasek','Wakasek Kesiswaan']]), f('kelas','Kelas (wajib untuk Walikelas)','select',[['', '- Tidak ada -'], ...kelasOpt()],false)], {role:'gurubk'}, async v => {
     const em = v.email.trim().toLowerCase(); if (v.role === 'walikelas' && !v.kelas) return 'Walikelas wajib memilih kelas.';
     const pw = rnd(5), data = {nama:v.nama.trim(), email:em, role:v.role, kelas:v.role === 'walikelas' ? v.kelas : ''};
     if (IS_PREVIEW) {
@@ -398,7 +410,7 @@ const A = window.A = {
     }
     setTimeout(() => info('Akun guru dibuat', `Email: <b>${e(em)}</b><div class="my-2">Password awal:</div><div class="text-xl font-mono font-bold text-blue-700">${pw}</div>Berikan ke yang bersangkutan dan minta menggantinya di Pengaturan > Ganti Password. Password ini tidak ditampilkan lagi.`), 50);
   }),
-  editAdmin: id => { const a = D.admins.find(x => x.id === id); form('Ubah Akun Guru', [f('nama','Nama lengkap'), f('role','Peran','select',[['gurubk','Guru BK'], ['walikelas','Walikelas']]), f('kelas','Kelas (wajib untuk Walikelas)','select',[['', '- Tidak ada -'], ...kelasOpt(a.kelas)],false)], a, async v => {
+  editAdmin: id => { const a = D.admins.find(x => x.id === id); form('Ubah Akun Guru', [f('nama','Nama lengkap'), f('role','Peran','select',[['gurubk','Guru BK'], ['walikelas','Walikelas'], ['wakasek','Wakasek Kesiswaan']]), f('kelas','Kelas (wajib untuk Walikelas)','select',[['', '- Tidak ada -'], ...kelasOpt(a.kelas)],false)], a, async v => {
     if (v.role === 'walikelas' && !v.kelas) return 'Walikelas wajib memilih kelas.';
     await DB.set('admins', id, {nama:v.nama.trim(), role:v.role, kelas:v.role === 'walikelas' ? v.kelas : ''}); toast('Tersimpan');
   }); },
@@ -414,6 +426,25 @@ const A = window.A = {
     if (IS_PREVIEW) return toast('Mode preview: email reset tidak dikirim.');
     try { await F.sendPasswordResetEmail(auth, a.email); toast('Email reset password dikirim ke ' + a.email); } catch (x) { toast('Gagal mengirim: ' + (x.code || x.message), 1); }
   },
+  openK: id => { ks = id; view = 'kasus'; render(); },
+  back: () => { ks = null; render(); },
+  kf: v => { KF = v; render(); },
+  newKasus: () => D.users.length ? form('Kasus Baru', [f('siswaId','Siswa','select',sisOpt()), f('tanggal','Tanggal','date'), f('kategori','Kategori','select',['Perilaku', 'Akademik', 'Kehadiran', 'Pergaulan', 'Lainnya']), f('tingkat','Tingkat','select',['Ringan', 'Sedang', 'Berat']), f('ringkasan','Ringkasan masalah','textarea')], {tanggal:today()}, async v => {
+    const u = D.users.find(x => x.id === v.siswaId);
+    await DB.set('kasus', rnd(8), {siswaId:u.id, nama:u.nama, kelas:u.kelas, tanggal:v.tanggal, kategori:v.kategori, tingkat:v.tingkat, ringkasan:v.ringkasan.trim(), tahap:S.role === 'walikelas' ? 1 : 2, status:'Terbuka', pelanggaran:[], dibuatOleh:S.nama, updated:Date.now()});
+    toast('Kasus dibuka');
+  }) : info('Belum ada siswa', 'Tambahkan data siswa terlebih dahulu.'),
+  step: j => { const k = ck(); form(JL[j].l, stepFields(j), {tanggal:today()}, stepSave(k, j)); },
+  editKasus: () => { const k = ck(); form('Ubah Kasus', [f('kategori','Kategori','select',['Perilaku', 'Akademik', 'Kehadiran', 'Pergaulan', 'Lainnya']), f('tingkat','Tingkat','select',['Ringan', 'Sedang', 'Berat']), f('ringkasan','Ringkasan masalah','textarea')], k, async v => { await DB.set('kasus', k.id, {kategori:v.kategori, tingkat:v.tingkat, ringkasan:v.ringkasan.trim(), updated:Date.now()}); toast('Tersimpan'); }); },
+  addPel: () => {
+    const k = ck(); if (!D.tatib.length) return info('Tata tertib masih kosong', g() ? 'Isi daftar pelanggaran di Pengaturan > Tata Tertib.' : 'Minta Guru BK mengisi daftar tata tertib di Pengaturan.');
+    form('Catat Pelanggaran', [f('t','Pelanggaran','select',D.tatib.map(t => [t.id, `${t.pasal} (${t.poin} poin)`]))], {}, async v => { const t = D.tatib.find(x => x.id === v.t); await DB.set('kasus', k.id, {pelanggaran:[...(k.pelanggaran || []), {pasal:t.pasal, poin:+t.poin || 0, tgl:today()}], updated:Date.now()}); toast('Pelanggaran dicatat'); });
+  },
+  delPel: i => { const k = ck(); ask('Hapus catatan pelanggaran?', 'Poin kasus akan berkurang.', async () => { await DB.set('kasus', k.id, {pelanggaran:(k.pelanggaran || []).filter((_, x) => x !== i), updated:Date.now()}); }); },
+  reopen: () => ask('Buka kembali kasus?', 'Kasus kembali berstatus terbuka.', async () => { await DB.set('kasus', ks, {status:'Terbuka', hasil:'', updated:Date.now()}); toast('Kasus dibuka kembali'); }),
+  rmKasus: () => ask('Hapus kasus ini?', 'Seluruh linimasa kasus ikut dihapus dan tidak dapat dikembalikan.', async () => { const id = ks; for (const x of LK) await DB.del(`kasus/${id}/langkah`, x.id); await DB.del('kasus', id); ks = null; toast('Kasus dihapus'); render(); }),
+  doc: t => { const k = ck(); if (k) showPaper(DOC[t](k)); },
+  saveBatas: async ev => { ev.preventDefault(); const b = Math.max(0, +new FormData(ev.target).get('batas') || 0); try { await DB.set('pengaturan', 'sekolah', {batasPoin:b}); D.sekolah = {...D.sekolah, batasPoin:b}; toast('Batas poin tersimpan'); render(); } catch (x) { toast('Gagal: ' + (x.code || x.message), 1); } },
   rep: (k, v) => { R[k] = v; render(); },
   csv() {
     const safe = x => { const s = String(x ?? ''); return '"' + (/^[=+\-@]/.test(s) ? "'" + s : s).replace(/"/g, '""') + '"'; };
@@ -422,7 +453,7 @@ const A = window.A = {
   },
   async saveSek(ev) {
     ev.preventDefault(); const v = Object.fromEntries(new FormData(ev.target));
-    try { await DB.set('pengaturan', 'sekolah', {namaSekolah:v.namaSekolah, tahunAjaran:v.tahunAjaran}); D.sekolah = {namaSekolah:v.namaSekolah, tahunAjaran:v.tahunAjaran}; hd(); toast('Data sekolah tersimpan'); } catch (x) { toast('Gagal: ' + (x.code || x.message), 1); }
+    try { await DB.set('pengaturan', 'sekolah', {namaSekolah:v.namaSekolah, tahunAjaran:v.tahunAjaran}); D.sekolah = {...D.sekolah, namaSekolah:v.namaSekolah, tahunAjaran:v.tahunAjaran}; hd(); toast('Data sekolah tersimpan'); } catch (x) { toast('Gagal: ' + (x.code || x.message), 1); }
   },
   async pass(ev) {
     ev.preventDefault(); const v = Object.fromEntries(new FormData(ev.target));
@@ -467,14 +498,109 @@ const paint = () => {
   b.scrollTop = b.scrollHeight;
 };
 
+// ---------- Alur kasus ----------
+const TH = {1:'Wali Kelas', 2:'Guru BK', 3:'Kesiswaan'}, SEV = ['Dikembalikan kepada orang tua', 'Disarankan pindah sekolah'];
+const WB = ['walikelas', 'gurubk'], ALL3 = ['walikelas', 'gurubk', 'wakasek'];
+const JL = {
+  identifikasi: {l:'Identifikasi awal', h:'Hasil pengamatan (perilaku, absensi, nilai)', r:WB, t:[1]},
+  panggil: {l:'Panggilan & konseling ringan', h:'Hasil pembicaraan dengan siswa dan akar masalah', r:WB, t:[1]},
+  teguran: {l:'Teguran lisan & pembinaan', h:'Pelanggaran dan pembinaan yang diberikan (dicatat juga di jurnal kelas)', r:WB, t:[1]},
+  ortu: {l:'Komunikasi dengan orang tua', h:'Isi informasi yang disampaikan dan tanggapan orang tua', r:WB, t:[1], cara:1},
+  rujuk: {l:'Rujuk ke Guru BK', h:'Catatan akumulasi pelanggaran / hasil observasi awal (min. 20 karakter)', r:WB, t:[1], min:20},
+  konseling: {l:'Konseling mendalam (rahasia BK)', h:'Catatan konseling. Hanya Guru BK yang dapat melihat.', r:['gurubk'], t:[2], rahasia:1},
+  ortu_resmi: {l:'Pemanggilan orang tua resmi', h:'Hasil pertemuan dan kesepakatan', r:ALL3, t:[2, 3], cara:1},
+  perjanjian: {l:'Perjanjian tertulis', h:'Isi surat pernyataan siswa (tidak mengulangi perbuatan)', r:['gurubk'], t:[2]},
+  naik: {l:'Naikkan ke Kesiswaan', h:'Alasan kenaikan ke Wakasek Kesiswaan (min. 20 karakter)', r:['gurubk'], t:[2], min:20},
+  bela: {l:'Keterangan siswa & orang tua', h:'Kronologi dari sudut pandang siswa dan/atau orang tua', r:ALL3, t:[1, 2, 3], pemberi:1},
+  konferensi: {l:'Konferensi kasus', h:'Peserta, pembahasan, dan hasil rapat', r:['gurubk', 'wakasek'], t:[3]},
+  skorsing: {l:'SK skorsing', h:'Alasan dan ketentuan pembinaan di rumah', r:['wakasek'], t:[3], skors:1},
+  putusan: {l:'Keputusan akhir', h:'Pertimbangan keputusan', r:['wakasek'], t:[3], putus:1},
+  selesai: {l:'Tutup kasus (teratasi)', h:'Hasil penyelesaian', r:WB, t:[1, 2]}
+};
+const ck = () => D.kasus.find(x => x.id === ks);
+const canEdit = k => k.status === 'Terbuka' && (g() || (S.role === 'walikelas' && k.tahap <= 2 && S.kelas === k.kelas));
+const avail = k => k.status !== 'Terbuka' ? [] : Object.keys(JL).filter(j => JL[j].r.includes(S.role) && JL[j].t.includes(k.tahap) && (S.role !== 'walikelas' || S.kelas === k.kelas));
+const myTahap = () => ({walikelas:1, gurubk:2, wakasek:3})[S.role];
+const todo = () => D.kasus.filter(k => k.status === 'Terbuka' && k.tahap === myTahap());
+const poinOf = id => D.kasus.filter(k => k.siswaId === id).reduce((a, k) => a + (k.pelanggaran || []).reduce((b, p) => b + (+p.poin || 0), 0), 0);
+const warn = () => { const lim = +D.sekolah.batasPoin || 0; return lim ? [...new Set(D.kasus.map(k => k.siswaId))].map(id => ({id, poin:poinOf(id)})).filter(x => x.poin >= lim) : []; };
+const need = k => { const m = []; if (!LK.some(x => x.jenis === 'konferensi')) m.push('konferensi kasus'); if (!LK.some(x => x.jenis === 'bela')) m.push('keterangan siswa/orang tua'); if (!(k.pelanggaran || []).length) m.push('pasal dan poin pelanggaran'); return m; };
+const stepFields = j => {
+  const d = JL[j], fs = [f('tanggal','Tanggal','date')];
+  if (d.cara) fs.push(f('ket','Cara komunikasi','select',['Telepon', 'Pesan tertulis', 'Tatap muka di sekolah', 'Kunjungan rumah']));
+  if (d.pemberi) fs.push(f('ket','Pemberi keterangan','select',['Siswa', 'Orang tua/wali', 'Siswa dan orang tua/wali']));
+  if (d.skors) fs.push(f('dari','Mulai skorsing','date'), f('sampai','Sampai dengan','date'), f('noSk','Nomor SK'));
+  if (d.putus) fs.push(f('keputusan','Keputusan','select',['Pembinaan lanjutan', ...SEV]));
+  fs.push(f('uraian', d.h, 'textarea')); return fs;
+};
+const stepSave = (k, j) => async v => {
+  const d = JL[j], u = (v.uraian || '').trim();
+  if (d.min && u.length < d.min) return `Isi minimal ${d.min} karakter agar data yang diserahkan jelas.`;
+  if (j === 'naik' && k.tingkat !== 'Berat') return 'Kenaikan ke Kesiswaan hanya untuk kasus tingkat Berat. Ubah tingkat kasus lebih dulu bila memang tergolong berat.';
+  if (j === 'skorsing' || (j === 'putusan' && SEV.includes(v.keputusan))) { const m = need(k); if (m.length) return 'Belum bisa dicatat. Lengkapi dulu: ' + m.join(', ') + '.'; }
+  if (j === 'skorsing' && v.dari > v.sampai) return 'Tanggal akhir skorsing harus setelah tanggal mulai.';
+  const doc = {jenis:j, tanggal:v.tanggal, uraian:u, oleh:S.nama, tahap:k.tahap, akses:d.rahasia ? 'bk' : 'semua', waktu:Date.now()};
+  ['ket', 'dari', 'sampai', 'noSk', 'keputusan'].forEach(x => { if (v[x]) doc[x] = String(v[x]).trim(); });
+  await DB.add(`kasus/${k.id}/langkah`, doc);
+  const up = {updated:Date.now()};
+  if (j === 'rujuk') up.tahap = 2; if (j === 'naik') up.tahap = 3;
+  if (j === 'selesai') { up.status = 'Selesai'; up.hasil = u.slice(0, 200); }
+  if (j === 'putusan') { up.status = 'Selesai'; up.hasil = v.keputusan; }
+  await DB.set('kasus', k.id, up); toast('Langkah dicatat' + (up.tahap ? ' dan kasus dialihkan ke ' + TH[up.tahap] : ''));
+};
+const kasusBlock = poin => {
+  const t = todo(), w = poin ? warn() : [];
+  return `<div class="grid ${poin ? 'md:grid-cols-2' : ''} gap-4 mb-5"><div class="card"><h3 class="font-bold mb-3">Menunggu tindakan Anda (${t.length})</h3>${t.slice(0, 5).map(k => `<div class="flex justify-between items-center gap-2 text-sm mb-2"><span><b>${e(k.nama)}</b> - ${e(k.kategori)} ${badge(k.tingkat)}</span><button onclick="A.openK('${k.id}')" class="btn2 !py-1 !px-2 text-xs">Buka</button></div>`).join('') || '<p class="text-sm text-gray-400">Tidak ada kasus yang menunggu tindakan Anda.</p>'}</div>${poin ? `<div class="card"><h3 class="font-bold mb-3">Poin pelanggaran mencapai batas</h3>${+D.sekolah.batasPoin ? (w.map(x => `<div class="flex justify-between text-sm mb-2"><b>${e(D.kasus.find(k => k.siswaId === x.id)?.nama)}</b><span class="text-red-600 font-semibold">${x.poin} poin</span></div>`).join('') || '<p class="text-sm text-gray-400">Belum ada siswa yang mencapai batas.</p>') : '<p class="text-sm text-gray-400">Batas poin belum diatur (Pengaturan > Tata Tertib).</p>'}</div>` : ''}</div>`;
+};
+const showPaper = h => {
+  const c = $('#cards'); c.innerHTML = `<div class="noprint sticky top-0 bg-white border-b px-4 py-3 flex gap-2 z-10"><b class="mr-auto">Pratinjau dokumen</b><button onclick="print()" class="btn1"><i class="fa-solid fa-print mr-1"></i>Cetak</button><button onclick="A.cardClose()" class="btn2">Tutup</button></div><p class="noprint text-xs text-amber-800 bg-amber-50 px-4 py-2">Templat umum. Sesuaikan nomor dan format surat dengan ketentuan sekolah sebelum dicetak. Dokumen bersifat rahasia.</p>${h}`;
+  c.classList.remove('hidden'); document.body.classList.add('pc');
+};
+const dotted = '......................................';
+const row = (l, v) => `<tr><td class="pr-3 align-top whitespace-nowrap">${l}</td><td class="pr-2 align-top">:</td><td>${v}</td></tr>`;
+const paper = (t, b) => `<div class="max-w-3xl mx-auto bg-white p-8 text-[14px] leading-relaxed" style="font-family:'Times New Roman',serif"><div class="text-center border-b-2 border-black pb-2 mb-3"><div class="text-lg font-bold uppercase">${e(D.sekolah.namaSekolah || 'Nama Sekolah')}</div><div class="text-xs">Layanan Bimbingan dan Konseling</div></div><div class="text-right text-xs font-bold text-red-700 mb-2">RAHASIA</div><h3 class="text-center font-bold underline mb-4">${t}</h3>${b}</div>`;
+const sig = it => `<div class="grid grid-cols-2 gap-8 mt-10 text-center">${it.map(([r, n]) => `<div>${r}<br><br><br><br><b>${e(n || '(................................)')}</b></div>`).join('')}</div>`;
+const DOC = {
+  panggil: k => paper('SURAT PEMANGGILAN ORANG TUA/WALI', `<p>Nomor : ........./........./${new Date().getFullYear()}<br>Hal : Pemanggilan Orang Tua/Wali Siswa</p><p class="mt-3">Kepada Yth.<br>Bapak/Ibu Orang Tua/Wali dari <b>${e(k.nama)}</b> (Kelas ${e(k.kelas)})<br>di tempat</p><p class="mt-3">Dengan hormat,</p><p>Dalam rangka pembinaan dan pendampingan putra/putri Bapak/Ibu, kami mengharapkan kehadiran Bapak/Ibu pada:</p><table class="my-3 ml-4">${row('Hari/Tanggal', dotted)}${row('Pukul', dotted)}${row('Tempat', dotted)}${row('Bertemu dengan', e(S.nama) + ' (' + e(ROLE()) + ')')}</table><p>Pertemuan ini bertujuan membahas perkembangan siswa dan mencari solusi terbaik bersama. Seluruh pembahasan dijaga kerahasiaannya oleh pihak sekolah.</p><p>Atas perhatian dan kehadiran Bapak/Ibu, kami ucapkan terima kasih.</p><div class="text-right mt-6">........................, ${fmtD(today())}<br>${e(ROLE())}<br><br><br><br><b>${e(S.nama)}</b></div>`),
+  pernyataan: k => { const p = LK.find(x => x.jenis === 'perjanjian'); return paper('SURAT PERNYATAAN SISWA', `<p>Saya yang bertanda tangan di bawah ini:</p><table class="my-3 ml-4">${row('Nama', e(k.nama))}${row('NIS', e(k.siswaId))}${row('Kelas', e(k.kelas))}</table><p>Dengan ini menyatakan dengan sungguh-sungguh bahwa saya:</p><p class="my-3 ml-4 whitespace-pre-wrap">${p ? e(p.uraian) : dotted + '<br>' + dotted}</p><p>Apabila saya mengulangi perbuatan tersebut, saya bersedia menerima tindakan sesuai tata tertib sekolah yang berlaku.</p><p class="mt-3">Demikian pernyataan ini saya buat tanpa paksaan dari pihak mana pun.</p><div class="text-right mt-4">........................, ${fmtD(today())}</div>${sig([['Mengetahui,<br>Orang Tua/Wali', ''], ['Yang membuat pernyataan,<br>Siswa', k.nama], ['Guru BK', ''], ['Wali Kelas', '']])}`); },
+  ba: k => { const kf = LK.find(x => x.jenis === 'konferensi'), pt = LK.find(x => x.jenis === 'putusan'), bl = LK.filter(x => x.jenis === 'bela'); return paper('BERITA ACARA KONFERENSI KASUS', `<p>Pada hari/tanggal ${kf ? fmtD(kf.tanggal) : dotted}, telah diselenggarakan konferensi kasus yang dihadiri Wali Kelas, Guru BK, Wakil Kepala Sekolah Bidang Kesiswaan, dan (bila diperlukan) Kepala Sekolah, membahas siswa:</p><table class="my-3 ml-4">${row('Nama', e(k.nama))}${row('Kelas', e(k.kelas))}${row('Kategori / Tingkat', e(k.kategori) + ' / ' + e(k.tingkat))}</table><p><b>Ringkasan kasus:</b><br>${e(k.ringkasan)}</p><p class="mt-3"><b>Pelanggaran dan poin:</b></p><ul class="list-disc ml-8">${(k.pelanggaran || []).map(p => `<li>${e(p.pasal)} (${e(p.poin)} poin)</li>`).join('') || '<li>' + dotted + '</li>'}</ul><p class="mt-3"><b>Keterangan siswa dan orang tua/wali:</b></p>${bl.map(x => `<p class="ml-4 whitespace-pre-wrap">- (${e(x.ket || '')}) ${e(x.uraian)}</p>`).join('') || '<p class="ml-4">' + dotted + '</p>'}<p class="mt-3"><b>Hasil pembahasan:</b><br>${kf ? e(kf.uraian) : dotted}</p><p class="mt-3"><b>Keputusan:</b> ${pt ? e(pt.keputusan) : dotted}</p>${sig([['Wali Kelas', ''], ['Guru BK', ''], ['Wakasek Kesiswaan', ''], ['Kepala Sekolah', '']])}`); },
+  sk: k => { const s = LK.find(x => x.jenis === 'skorsing'); return paper('SURAT KEPUTUSAN SKORSING SISWA', `<p class="text-center">Nomor : ${s?.noSk ? e(s.noSk) : dotted}</p><p class="mt-3">Wakil Kepala Sekolah Bidang Kesiswaan, setelah mempertimbangkan hasil konferensi kasus serta keterangan siswa dan orang tua/wali, memutuskan:</p><table class="my-3 ml-4">${row('Nama', e(k.nama))}${row('Kelas', e(k.kelas))}${row('Pelanggaran', (k.pelanggaran || []).map(p => e(p.pasal)).join(', ') || dotted)}${row('Masa skorsing', s ? `${fmtD(s.dari)} s.d. ${fmtD(s.sampai)}` : dotted)}</table><p>Selama masa skorsing, siswa menjalani pembinaan di rumah di bawah pengawasan orang tua/wali dan wajib mengikuti ketentuan yang ditetapkan sekolah.</p><p class="mt-3">${s ? e(s.uraian) : ''}</p><p class="mt-3">Keputusan ini berlaku sejak tanggal ditetapkan.</p><div class="text-right mt-4">........................, ${fmtD(today())}<br>Wakil Kepala Sekolah Bidang Kesiswaan<br><br><br><br><b>${S.role === 'wakasek' ? e(S.nama) : '(................................)'}</b></div>${sig([['Mengetahui,<br>Orang Tua/Wali', ''], ['Siswa', k.nama]])}`); }
+};
+const kasusDetail = k => {
+  const poin = (k.pelanggaran || []).reduce((a, p) => a + (+p.poin || 0), 0), ed = canEdit(k), av = avail(k), hasSk = LK.some(x => x.jenis === 'skorsing');
+  const sesiL = g() ? D.bimbingan_sesi.filter(s => s.kasusId === k.id).map(s => ({jenis:'sesi', tanggal:s.tanggal, uraian:s.topik + (s.tindak ? '\nTindak lanjut: ' + s.tindak : ''), oleh:'Guru BK', tahap:2, akses:'bk', waktu:new Date(s.tanggal + 'T00:00').getTime()})) : [];
+  const tl = [...LK, ...sesiL].sort((a, b) => a.waktu - b.waktu), lbl = j => j === 'sesi' ? 'Sesi konseling (BK)' : (JL[j]?.l || j);
+  const ex = x => [x.ket, x.keputusan, x.noSk ? 'No. SK ' + x.noSk : '', x.dari ? `${fmtD(x.dari)} s.d. ${fmtD(x.sampai)}` : ''].filter(Boolean).map(e).join(' &middot; ');
+  const db = (t, l) => `<button onclick="A.doc('${t}')" class="btn2 !py-1.5 text-xs"><i class="fa-solid fa-print mr-1"></i>${l}</button>`;
+  return `<button onclick="A.back()" class="text-sm text-blue-600 mb-3"><i class="fa-solid fa-arrow-left mr-1"></i>Kembali ke daftar kasus</button>
+  <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 mb-4"><i class="fa-solid fa-lock mr-1"></i>Data kasus bersifat rahasia. Jangan diumumkan di depan kelas atau di grup WhatsApp.</div>
+  <div class="grid lg:grid-cols-3 gap-4"><div class="lg:col-span-2 space-y-4">
+   <div class="card"><div class="flex flex-wrap justify-between gap-2"><div><h2 class="text-xl font-bold">${e(k.nama)}</h2><p class="text-sm text-gray-500">Kelas ${e(k.kelas)} &middot; dibuka ${fmtD(k.tanggal)} oleh ${e(k.dibuatOleh)}</p></div><div class="flex gap-2 items-start">${badge(k.tingkat)}${badge(k.status)}</div></div>
+    <div class="flex gap-1 mt-4 text-xs">${[1, 2, 3].map(t => `<div class="flex-1 text-center py-1.5 rounded ${k.tahap >= t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}">${t}. ${TH[t]}</div>`).join('')}</div>
+    <p class="mt-4 text-sm"><b>${e(k.kategori)}:</b> ${e(k.ringkasan)}</p>${k.hasil ? `<p class="mt-2 text-sm"><b>Hasil:</b> ${e(k.hasil)}</p>` : ''}
+    <div class="flex flex-wrap gap-2 mt-4">${ed ? '<button onclick="A.editKasus()" class="btn2 !py-1.5 text-xs">Ubah kasus</button>' : ''}${g() && k.status === 'Selesai' ? '<button onclick="A.reopen()" class="btn2 !py-1.5 text-xs">Buka kembali</button>' : ''}${g() ? '<button onclick="A.rmKasus()" class="text-red-500 text-xs ml-auto">Hapus kasus</button>' : ''}</div></div>
+   <div class="card"><div class="flex justify-between items-center mb-2"><h3 class="font-bold">Pelanggaran &amp; poin (total ${poin})</h3>${ed ? '<button onclick="A.addPel()" class="btn2 !py-1 text-xs">Catat pelanggaran</button>' : ''}</div>${(k.pelanggaran || []).map((p, i) => `<div class="flex justify-between text-sm py-1 border-t first:border-0"><span>${e(p.pasal)} <span class="text-gray-400 text-xs">${fmtD(p.tgl)}</span></span><span><b>${e(p.poin)}</b> poin${ed ? ` <button onclick="A.delPel(${i})" class="text-red-500 ml-2" aria-label="Hapus"><i class="fa-solid fa-xmark"></i></button>` : ''}</span></div>`).join('') || '<p class="text-sm text-gray-400">Belum ada pelanggaran tercatat.</p>'}</div>
+   <div class="card"><h3 class="font-bold mb-3">Linimasa penanganan</h3>${tl.map(x => `<div class="border-l-2 border-blue-200 pl-4 pb-4 relative"><span class="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-blue-500"></span><div class="text-sm font-semibold">${e(lbl(x.jenis))} ${x.akses === 'bk' ? '<span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded ml-1">Rahasia BK</span>' : ''}</div><div class="text-xs text-gray-500">${fmtD(x.tanggal)} &middot; ${e(x.oleh)} &middot; ${TH[x.tahap] || ''}</div><p class="text-sm mt-1 whitespace-pre-wrap">${e(x.uraian)}</p>${ex(x) ? `<p class="text-xs text-gray-500 mt-1">${ex(x)}</p>` : ''}</div>`).join('') || '<p class="text-sm text-gray-400">Belum ada langkah. Catat langkah pertama di panel kanan.</p>'}</div>
+  </div><div class="space-y-4">
+   <div class="card"><h3 class="font-bold mb-3">Langkah berikutnya</h3>${av.map(j => `<button onclick="A.step('${j}')" class="w-full text-left text-sm px-3 py-2 mb-2 rounded-lg border hover:bg-blue-50">${e(JL[j].l)}</button>`).join('') || `<p class="text-sm text-gray-400">${k.status === 'Selesai' ? 'Kasus sudah ditutup.' : 'Tidak ada langkah yang dapat Anda lakukan pada tahap ini.'}</p>`}</div>
+   <div class="card"><h3 class="font-bold mb-3">Dokumen cetak</h3><div class="flex flex-wrap gap-2">${db('panggil', 'Surat pemanggilan')}${S.role !== 'wakasek' ? db('pernyataan', 'Surat pernyataan') : ''}${S.role !== 'walikelas' ? db('ba', 'Berita acara konferensi') : ''}${hasSk && S.role !== 'walikelas' ? db('sk', 'SK skorsing') : ''}</div></div>
+  </div></div>`;
+};
+
+const kasusRekap = () => {
+  const kr = D.kasus.filter(k => k.tanggal >= R.from && k.tanggal <= R.to), c = (fn, vals) => vals.map(v => `<div class="flex justify-between text-sm py-1"><span>${v}</span><b>${kr.filter(k => fn(k) === v).length}</b></div>`).join('');
+  return `<h3 class="font-bold mb-2">Rekap Kasus (${kr.length})</h3><div class="grid md:grid-cols-4 gap-4 mb-4"><div class="card"><h4 class="font-semibold mb-1">Posisi</h4>${c(k => k.status === 'Selesai' ? 'Selesai' : TH[k.tahap], ['Wali Kelas', 'Guru BK', 'Kesiswaan', 'Selesai'])}</div><div class="card"><h4 class="font-semibold mb-1">Tingkat</h4>${c(k => k.tingkat, ['Ringan', 'Sedang', 'Berat'])}</div><div class="card md:col-span-2"><h4 class="font-semibold mb-1">Kategori</h4>${c(k => k.kategori, ['Perilaku', 'Akademik', 'Kehadiran', 'Pergaulan', 'Lainnya'])}</div></div>`;
+};
+
 const V = {
   dashboard() {
+    if (S.role === 'wakasek') return hdr('Dashboard', 'Kasus yang menunggu keputusan Kesiswaan') + kasusBlock(false);
     if (S.role === 'siswa') return hdr('Halo, ' + e(S.nama), 'Kelas ' + e(S.kelas)) + `<div class="grid md:grid-cols-2 gap-4"><div class="card"><h3 class="font-bold mb-3">Agenda Bimbingan Mendatang</h3>${agendaList(upcoming())}</div><div class="card"><h3 class="font-bold mb-2">Butuh teman bicara?</h3><p class="text-sm text-gray-600 mb-4">Ceritakan kendala belajar, pertemanan, atau hal lain langsung ke Guru BK.</p><button onclick="A.go('konsultasi')" class="btn1"><i class="fa-regular fa-comments mr-1"></i>Mulai konsultasi</button></div></div>`;
     const sesi = D.bimbingan_sesi, bl = ym(new Date());
     const cards = [['Siswa Terbimbing', new Set(sesi.map(s => s.siswaId)).size, 'user-group', 'bg-[#1d74c4] text-white'], ['Sesi Bulan Ini', sesi.filter(s => s.tanggal?.startsWith(bl)).length, 'calendar-check', 'bg-[#2bb774] text-white'], g() ? ['Catatan Pribadi', D.catatan_pribadi.length, 'file-lines', 'bg-[#ffe5cc]'] : ['Jumlah Siswa', D.users.length, 'file-lines', 'bg-[#ffe5cc]'], ['Perlu Perhatian', sesi.filter(s => s.tingkat === 'Berat' && s.status !== 'Selesai').length, 'bell', 'bg-[#f0743b] text-white']];
     return hdr('Dashboard', S.role === 'walikelas' ? 'Ringkasan kelas ' + e(S.kelas) : 'Ringkasan layanan bimbingan konseling') +
       `<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">${cards.map(c => `<div class="${c[3]} rounded-xl p-4 shadow-sm"><div class="text-sm font-medium">${c[0]}</div><div class="flex justify-between items-end mt-1"><span class="text-3xl font-bold">${c[1]}</span><i class="fa-solid fa-${c[2]} text-3xl opacity-40"></i></div></div>`).join('')}</div>
-      <div class="grid lg:grid-cols-5 gap-4 mb-5"><div class="card lg:col-span-3"><h3 class="font-bold mb-3">Sesi Bimbingan 6 Bulan Terakhir</h3><div class="h-60"><canvas id="c1"></canvas></div></div><div class="card lg:col-span-2"><h3 class="font-bold mb-3">Status Penanganan</h3><div class="h-60"><canvas id="c2"></canvas></div></div></div>
+      ${kasusBlock(true)}<div class="grid lg:grid-cols-5 gap-4 mb-5"><div class="card lg:col-span-3"><h3 class="font-bold mb-3">Sesi Bimbingan 6 Bulan Terakhir</h3><div class="h-60"><canvas id="c1"></canvas></div></div><div class="card lg:col-span-2"><h3 class="font-bold mb-3">Status Penanganan</h3><div class="h-60"><canvas id="c2"></canvas></div></div></div>
       <div class="grid md:grid-cols-2 gap-4"><div class="card"><h3 class="font-bold mb-3">Agenda Mendatang</h3>${agendaList(upcoming())}</div><div class="card"><h3 class="font-bold mb-3">Kasus Perlu Perhatian</h3>${sesi.filter(s => s.tingkat === 'Berat' && s.status !== 'Selesai').slice(0, 5).map(s => `<div class="text-sm mb-2 flex justify-between gap-2"><span><b>${e(nm(s.siswaId))}</b> - ${e(s.topik)}</span>${badge(s.status)}</div>`).join('') || '<p class="text-sm text-gray-400">Tidak ada kasus berat yang terbuka.</p>'}</div></div>`;
   },
   siswa() {
@@ -499,16 +625,27 @@ const V = {
     return hdr(g() ? 'Bimbingan & Konseling' : 'Sesi Konseling', 'Riwayat sesi bimbingan dan chat konsultasi siswa.', addB('bimbingan_sesi', 'Tambah Sesi')) +
       `<div class="grid ${g() ? 'xl:grid-cols-5' : ''} gap-4"><div class="${g() ? 'xl:col-span-3' : ''}">${tbl(['Tanggal', 'Siswa', 'Topik', 'Tingkat', 'Status', g() ? 'Aksi' : ''], r.map(s => [fmtD(s.tanggal), e(nm(s.siswaId)), e(s.topik), badge(s.tingkat), badge(s.status), act('bimbingan_sesi', s.id)]), 'Belum ada sesi bimbingan.')}</div>${g() ? `<div class="xl:col-span-2">${chatPanel()}</div>` : ''}</div>`;
   },
+  kasus() {
+    const k = ks && ck(); if (ks && !k) ks = null; if (k) return kasusDetail(k);
+    const L = D.kasus.filter(x => KF === 'all' || (KF === 'open' ? x.status === 'Terbuka' : x.status === 'Selesai')).sort((a, b) => (a.status === 'Selesai') - (b.status === 'Selesai') || (b.tanggal || '').localeCompare(a.tanggal || ''));
+    const tab = (v, l) => `<button onclick="A.kf('${v}')" class="px-3 py-1.5 rounded-lg text-sm ${KF === v ? 'bg-blue-600 text-white' : 'bg-white border'}">${l}</button>`;
+    return hdr('Kasus Siswa', 'Penanganan bertahap: Wali Kelas, Guru BK, lalu Kesiswaan. Data bersifat rahasia.', S.role === 'wakasek' ? '' : '<button onclick="A.newKasus()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Kasus baru</button>') + `<div class="flex gap-2 mb-3">${tab('all', 'Semua')}${tab('open', 'Terbuka')}${tab('done', 'Selesai')}</div>` +
+      tbl(['Tanggal', 'Siswa', 'Kelas', 'Kategori', 'Tingkat', 'Tahap', 'Status', ''], L.map(x => [fmtD(x.tanggal), e(x.nama), e(x.kelas), e(x.kategori), badge(x.tingkat), x.status === 'Selesai' ? '-' : TH[x.tahap], badge(x.status), `<button onclick="A.openK('${x.id}')" class="text-blue-600 font-medium">Buka</button>`]), 'Belum ada kasus.');
+  },
   monitoring() {
-    const cols = ['Baru', 'Proses', 'Selesai'], rank = {Berat:0, Sedang:1, Ringan:2};
-    return hdr('Monitoring Kasus', 'Pantau perkembangan penanganan setiap sesi.') + `<div class="grid md:grid-cols-3 gap-4">${cols.map((c, i) => { const l = D.bimbingan_sesi.filter(s => s.status === c).sort((a, b) => rank[a.tingkat] - rank[b.tingkat]);
-      return `<div class="bg-slate-200/60 rounded-xl p-3"><div class="flex justify-between mb-2 px-1"><b class="text-sm">${c}</b><span class="text-xs text-gray-500">${l.length}</span></div>${l.map(s => `<div class="card !p-3 mb-2 text-sm"><div class="flex justify-between gap-2"><b>${e(nm(s.siswaId))}</b>${badge(s.tingkat)}</div><p class="my-1">${e(s.topik)}</p><div class="text-xs text-gray-500">${fmtD(s.tanggal)} &middot; ${e(s.kelas)}</div>${g() && i < 2 ? `<button onclick="A.mv('${s.id}','${cols[i + 1]}')" class="btn2 !py-1 !px-2 text-xs mt-2">Pindah ke ${cols[i + 1]}</button>` : ''}</div>`).join('') || '<p class="text-xs text-gray-400 text-center py-4">Kosong</p>'}</div>`; }).join('')}</div>`;
+    const cols = [['Wali Kelas', k => k.status === 'Terbuka' && k.tahap === 1], ['Guru BK', k => k.status === 'Terbuka' && k.tahap === 2], ['Kesiswaan', k => k.status === 'Terbuka' && k.tahap === 3], ['Selesai', k => k.status === 'Selesai']], rank = {Berat:0, Sedang:1, Ringan:2};
+    return hdr('Monitoring Kasus', 'Posisi setiap kasus pada tahap penanganan.') + `<div class="grid md:grid-cols-2 xl:grid-cols-4 gap-4">${cols.map(([c, fn]) => { const l = D.kasus.filter(fn).sort((a, b) => rank[a.tingkat] - rank[b.tingkat]);
+      return `<div class="bg-slate-200/60 rounded-xl p-3"><div class="flex justify-between mb-2 px-1"><b class="text-sm">${c}</b><span class="text-xs text-gray-500">${l.length}</span></div>${l.map(k => `<div class="card !p-3 mb-2 text-sm"><div class="flex justify-between gap-2"><b>${e(k.nama)}</b>${badge(k.tingkat)}</div><p class="my-1">${e(k.kategori)}</p><div class="text-xs text-gray-500">${fmtD(k.tanggal)} &middot; ${e(k.kelas)}</div><button onclick="A.openK('${k.id}')" class="btn2 !py-1 !px-2 text-xs mt-2">Buka kasus</button></div>`).join('') || '<p class="text-xs text-gray-400 text-center py-4">Kosong</p>'}</div>`; }).join('')}</div>`;
+  },
+  dokumen() {
+    const L = [...D.kasus].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+    return hdr('Dokumen Cetak', 'Surat pemanggilan orang tua, surat pernyataan, berita acara konferensi, dan SK skorsing. Buka kasus untuk mencetaknya.') + tbl(['Siswa', 'Kelas', 'Tahap', 'Status', ''], L.map(k => [e(k.nama), e(k.kelas), k.status === 'Selesai' ? '-' : TH[k.tahap], badge(k.status), `<button onclick="A.openK('${k.id}')" class="text-blue-600 font-medium">Buka dokumen</button>`]), 'Belum ada kasus.');
   },
   laporan() {
     const r = repData(), cnt = (k, vals) => vals.map(v => `<div class="flex justify-between text-sm py-1"><span>${v}</span><b>${r.filter(s => s[k] === v).length}</b></div>`).join('');
     return hdr('Laporan Bimbingan', 'Rekap sesi per periode.', '<div class="noprint flex gap-2"><button onclick="A.csv()" class="btn2"><i class="fa-solid fa-file-csv mr-1"></i>Ekspor CSV</button><button onclick="print()" class="btn1"><i class="fa-solid fa-print mr-1"></i>Cetak</button></div>') +
       `<div class="card mb-4 flex flex-wrap gap-3 items-end noprint"><label class="text-sm font-medium">Dari<input type="date" class="inp" value="${R.from}" onchange="A.rep('from',this.value)"></label><label class="text-sm font-medium">Sampai<input type="date" class="inp" value="${R.to}" onchange="A.rep('to',this.value)"></label></div>
-      <div class="grid md:grid-cols-3 gap-4 mb-4"><div class="card"><h3 class="font-bold mb-1">Total sesi: ${r.length}</h3>${cnt('status', ['Baru', 'Proses', 'Selesai'])}</div><div class="card"><h3 class="font-bold mb-1">Per tingkat</h3>${cnt('tingkat', ['Ringan', 'Sedang', 'Berat'])}</div><div class="card"><h3 class="font-bold mb-1">Per jenis</h3>${cnt('jenis', ['Konseling Individu', 'Konseling Kelompok', 'Kunjungan Rumah', 'Lainnya'])}</div></div>` +
+      <div class="grid md:grid-cols-3 gap-4 mb-4"><div class="card"><h3 class="font-bold mb-1">Total sesi: ${r.length}</h3>${cnt('status', ['Baru', 'Proses', 'Selesai'])}</div><div class="card"><h3 class="font-bold mb-1">Per tingkat</h3>${cnt('tingkat', ['Ringan', 'Sedang', 'Berat'])}</div><div class="card"><h3 class="font-bold mb-1">Per jenis</h3>${cnt('jenis', ['Konseling Individu', 'Konseling Kelompok', 'Kunjungan Rumah', 'Lainnya'])}</div></div>${kasusRekap()}` +
       tbl(['Tanggal', 'Siswa', 'Kelas', 'Topik', 'Tingkat', 'Status'], r.map(s => [fmtD(s.tanggal), e(nm(s.siswaId)), e(s.kelas), e(s.topik), badge(s.tingkat), badge(s.status)]), 'Tidak ada sesi pada periode ini.');
   },
   pengaturan() {
@@ -517,7 +654,8 @@ const V = {
       <div class="card"><h3 class="font-bold mb-3">Profil</h3><dl class="text-sm space-y-2"><div class="flex justify-between"><dt class="text-gray-500">Nama</dt><dd>${e(S.nama)}</dd></div><div class="flex justify-between"><dt class="text-gray-500">Peran</dt><dd>${e(ROLE())}</dd></div>${adm ? `<div class="flex justify-between"><dt class="text-gray-500">Email</dt><dd>${e(S.email)}</dd></div>` : `<div class="flex justify-between"><dt class="text-gray-500">NIS</dt><dd>${e(S.nis)}</dd></div>`}</dl>${adm ? '' : '<p class="text-xs text-gray-500 mt-4">Lupa password? Minta Guru BK untuk mereset.</p>'}<button onclick="A.out()" class="btn2 mt-4"><i class="fa-solid fa-right-from-bracket mr-1"></i>Keluar</button></div>
       ${adm ? `<div class="card"><h3 class="font-bold mb-3">Ganti Password</h3><form onsubmit="A.pass(event)" class="space-y-3"><label class="block text-sm font-medium">Password lama<input name="lama" type="password" class="inp" required></label><label class="block text-sm font-medium">Password baru (min. 8 karakter)<input name="baru" type="password" class="inp" minlength="8" required></label><button class="btn1">Ganti password</button></form></div>` : ''}
       ${g() ? `<div class="md:col-span-2"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Data Kelas</h3><button onclick="A.addKelas()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Kelas</button></div>${tbl(['Kelas', 'Walikelas', 'Jumlah Siswa', 'Aksi'], [...D.kelas].sort((a, b) => a.nama.localeCompare(b.nama, 'id', {numeric:true})).map(k => [e(k.nama), e(k.walikelas || '-'), D.users.filter(u => u.kelas === k.nama).length, `<span class="whitespace-nowrap"><button onclick="A.editKelas('${k.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.delKelas('${k.id}')" class="text-red-500" aria-label="Hapus"><i class="fa-solid fa-trash"></i></button></span>`]), 'Belum ada kelas. Tambahkan kelas agar data siswa bisa diisi.')}</div>` : ''}
-      ${g() ? `<div class="md:col-span-2"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Akun Guru</h3><button onclick="A.addAdmin()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Akun</button></div>${tbl(['Nama', 'Email', 'Peran', 'Kelas', 'Aksi'], [...D.admins].sort((a, b) => (a.nama || '').localeCompare(b.nama || '')).map(a => [e(a.nama) + (a.id === S.uid ? ' <span class="text-xs text-gray-400">(Anda)</span>' : ''), e(a.email || '-'), a.role === 'gurubk' ? 'Guru BK' : 'Walikelas', e(a.kelas || '-'), a.id === S.uid ? '' : `<span class="whitespace-nowrap"><button onclick="A.editAdmin('${a.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.resetAdmin('${a.id}')" class="text-amber-600 mr-3" aria-label="Kirim reset password"><i class="fa-solid fa-key"></i></button><button onclick="A.delAdmin('${a.id}')" class="text-red-500" aria-label="Cabut akses"><i class="fa-solid fa-user-slash"></i></button></span>`]), 'Belum ada akun guru.')}</div>` : ''}
+      ${g() ? `<div class="md:col-span-2"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Akun Guru</h3><button onclick="A.addAdmin()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Akun</button></div>${tbl(['Nama', 'Email', 'Peran', 'Kelas', 'Aksi'], [...D.admins].sort((a, b) => (a.nama || '').localeCompare(b.nama || '')).map(a => [e(a.nama) + (a.id === S.uid ? ' <span class="text-xs text-gray-400">(Anda)</span>' : ''), e(a.email || '-'), RL[a.role] || e(a.role), e(a.kelas || '-'), a.id === S.uid ? '' : `<span class="whitespace-nowrap"><button onclick="A.editAdmin('${a.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.resetAdmin('${a.id}')" class="text-amber-600 mr-3" aria-label="Kirim reset password"><i class="fa-solid fa-key"></i></button><button onclick="A.delAdmin('${a.id}')" class="text-red-500" aria-label="Cabut akses"><i class="fa-solid fa-user-slash"></i></button></span>`]), 'Belum ada akun guru.')}</div>` : ''}
+      ${g() ? `<div class="md:col-span-2"><div class="flex flex-wrap justify-between items-center gap-2 mb-3"><h3 class="font-bold text-lg">Tata Tertib &amp; Poin Pelanggaran</h3><button onclick="A.new('tatib')" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Pasal</button></div><form onsubmit="A.saveBatas(event)" class="card mb-3 flex flex-wrap items-end gap-3"><label class="text-sm font-medium">Batas poin peringatan (0 = nonaktif)<input name="batas" type="number" min="0" class="inp" value="${+D.sekolah.batasPoin || 0}"></label><button class="btn1">Simpan batas</button></form>${tbl(['Pasal / pelanggaran', 'Poin', 'Tingkat', 'Aksi'], [...D.tatib].sort((a, b) => (+a.poin || 0) - (+b.poin || 0)).map(t => [e(t.pasal), e(t.poin), badge(t.tingkat), act('tatib', t.id)]), 'Belum ada pasal tata tertib.')}</div>` : ''}
       ${g() ? `<div class="card md:col-span-2"><h3 class="font-bold mb-3">Data Sekolah</h3><form onsubmit="A.saveSek(event)" class="grid sm:grid-cols-2 gap-3"><label class="text-sm font-medium">Nama sekolah<input name="namaSekolah" class="inp" required value="${e(D.sekolah.namaSekolah)}"></label><label class="text-sm font-medium">Tahun ajaran<input name="tahunAjaran" class="inp" required value="${e(D.sekolah.tahunAjaran)}" placeholder="2026/2027"></label><div class="sm:col-span-2"><button class="btn1">Simpan</button></div></form></div>` : ''}</div>`;
   }
 };
@@ -527,6 +665,10 @@ const H = {
     charts.push(new Chart($('#c1'), {type:'bar', data:{labels:ms.map(m => { const [y, mo] = m.split('-'); return new Date(y, mo - 1).toLocaleDateString('id-ID', {month:'short'}); }), datasets:[{label:'Sesi', data:ms.map(m => D.bimbingan_sesi.filter(s => s.tanggal?.startsWith(m)).length), backgroundColor:'#2c72be', borderRadius:4}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{precision:0}}}}}));
     const st = ['Baru', 'Proses', 'Selesai'].map(x => D.bimbingan_sesi.filter(s => s.status === x).length);
     charts.push(new Chart($('#c2'), {type:'doughnut', data:{labels:['Baru', 'Proses', 'Selesai'], datasets:[{data:st.some(Boolean) ? st : [0, 0, 0], backgroundColor:['#3b82f6', '#f97316', '#22c55e'], borderWidth:0}]}, options:{responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{legend:{position:'bottom'}}}}));
+  },
+  kasus() {
+    if (!ks) return;
+    if (kt !== ks) { ku?.(); kt = ks; LK = []; ku = DB.sub(`kasus/${ks}/langkah`, r => { LK = r.sort((a, b) => a.waktu - b.waktu); render(); }, g() ? null : ['akses', 'semua']); }
   },
   konsultasi() {
     const tok = ctok(); if (!tok) { paint(); return; }
@@ -542,6 +684,7 @@ function render() {
   if (!S) return;
   charts.forEach(c => c.destroy()); charts = []; const dr = $('#ci')?.value;
   if (view !== 'konsultasi') { mu?.(); mu = null; mt = null; }
+  if (view !== 'kasus' || !ks) { ku?.(); ku = null; kt = null; LK = []; }
   $('#content').innerHTML = (V[view] || V.dashboard)(); H[view]?.();
   if (dr) { const i = $('#ci'); if (i) { i.value = dr; i.focus(); } }
   document.querySelectorAll('[data-k]').forEach(n => n.classList.toggle('on', n.dataset.k === view)); hd();
@@ -552,7 +695,8 @@ function start() {
   $('#bn').innerHTML = m.slice(0, 4).map(([k, l, i]) => `<a onclick="A.go('${k}')" data-k="${k}" class="bb"><i class="fa-solid fa-${i}"></i>${l.split(' ')[0]}</a>`).join('') + (m.length > 4 ? '<a onclick="A.sb()" class="bb"><i class="fa-solid fa-ellipsis"></i>Lainnya</a>' : '');
   const sb = (p, k, ww) => unsubs.push(DB.sub(p, r => { D[k] = r; render(); }, ww));
   sb('agenda_bk', 'agenda_bk');
-  if (st) { sb('kelas', 'kelas'); sb('users', 'users', w); sb('bimbingan_sesi', 'bimbingan_sesi', w); }
+  if (st) { sb('tatib', 'tatib'); sb('kasus', 'kasus', S.role === 'walikelas' ? ['kelas', S.kelas] : S.role === 'wakasek' ? ['tahap', 3] : null); }
+  if (st && S.role !== 'wakasek') { sb('kelas', 'kelas'); sb('users', 'users', w); sb('bimbingan_sesi', 'bimbingan_sesi', w); }
   if (g()) { sb('admins', 'admins'); sb('catatan_pribadi', 'catatan_pribadi'); sb('chats', 'chats'); }
   DB.get('pengaturan', 'sekolah').then(s => { if (s) { D.sekolah = s; hd(); } }).catch(() => {});
   view = 'dashboard'; $('#login').classList.add('hidden'); $('#shell').classList.remove('hidden'); $('#pv').classList.toggle('hidden', !IS_PREVIEW); render();
