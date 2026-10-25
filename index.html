@@ -16,7 +16,7 @@
 .inp{width:100%;margin-top:.25rem;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:.5rem;font-weight:400;font-size:.875rem;background:#fff}
 .inp:focus{outline:2px solid #2c72be;border-color:transparent}
 .btn1{background:#2c72be;color:#fff;padding:.5rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:600}.btn1:hover{background:#1a4b80}
-.btn2{background:#e2e8f0;color:#1e293b;padding:.5rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:500}.btn2:hover{background:#cbd5e1}
+.btn2{background:#e2e8f0;color:#1e293b;padding:.5rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:500}.btn2:hover{background:#cbd5e1}.btn2:disabled{opacity:.5;cursor:not-allowed}
 .card{background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;padding:1.25rem}
 .nb{display:flex;align-items:center;gap:.75rem;padding:.65rem .75rem;border-radius:.5rem;color:#cbd5e1;font-size:.875rem;font-weight:500;cursor:pointer}
 .nb:hover{background:#255b99;color:#fff}.nb.on{background:#2c72be;color:#fff}
@@ -50,6 +50,7 @@ body.pc #cards{position:static!important;overflow:visible!important}
    <button id="lb" class="btn1 w-full py-2.5">Masuk</button>
   </form>
   <div id="demo" class="hidden mt-4 text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-3 leading-relaxed"></div>
+  <p class="mt-5 text-center text-[11px] text-gray-500">Dibuat dengan <i class="fa-solid fa-heart text-red-500"></i> oleh Kakang Asmil &middot; <i class="fa-regular fa-copyright"></i> 2026 BISA - Bimbingan Siswa Digital</p>
  </div>
 </div>
 
@@ -66,7 +67,7 @@ body.pc #cards{position:static!important;overflow:visible!important}
    <button onclick="A.sb()" class="md:hidden p-2 text-gray-500" aria-label="Menu"><i class="fa-solid fa-bars text-xl"></i></button>
    <div id="sn" class="font-semibold text-gray-700 truncate"></div>
    <div class="ml-auto flex items-center gap-4">
-    <button id="bell" onclick="A.go('konsultasi')" class="relative text-gray-500 hidden" aria-label="Chat menunggu"><i class="fa-regular fa-bell text-xl"></i><span id="bc" class="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full"></span></button>
+    <button id="bell" onclick="A.notif()" class="relative text-gray-500 hidden" aria-label="Pemberitahuan"><i class="fa-regular fa-bell text-xl"></i><span id="bc" class="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full"></span></button>
     <div class="border-l pl-4 text-right"><div id="un" class="text-sm font-semibold leading-none"></div><div id="ur" class="text-xs text-gray-500 mt-1"></div></div>
    </div>
   </header>
@@ -83,16 +84,16 @@ body.pc #cards{position:static!important;overflow:visible!important}
 
 <script type="module">
 // KONFIGURASI APLIKASI
-const IS_PREVIEW = false; // Ubah menjadi false SAAT DEPLOY / PUBLISH agar terhubung murni ke Firebase tanpa data dummy
+const IS_PREVIEW = true; // Ubah menjadi false SAAT DEPLOY / PUBLISH agar terhubung murni ke Firebase tanpa data dummy
 
 // PASTE FIREBASE CONFIG ANDA DI SINI
 const firebaseConfig = {
-apiKey: "AIzaSyDjvlWA79HIwK8j4ksV0SqbcMU3QQ8NpWs",
-authDomain: "bisa-f5eb4.firebaseapp.com",
-projectId: "bisa-f5eb4",
-storageBucket: "bisa-f5eb4.firebasestorage.app",
-messagingSenderId: "415777614197",
-appId: "1:415777614197:web:81990f05740e33fb754b3c"
+  apiKey: "API_KEY_ANDA",
+  authDomain: "PROJECT_ID.firebaseapp.com",
+  projectId: "PROJECT_ID",
+  storageBucket: "PROJECT_ID.appspot.com",
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID"
 };
 
 // ---------- PWA: service worker dari Blob (gagal dengan aman bila browser menolak) ----------
@@ -123,11 +124,12 @@ let F, auth, db; const mem = {}; const watchers = new Set();
 const P = p => p.split('/');
 const DB = {
   sub(p, cb, w) {
+    if (w) w = w.length === 3 ? w : [w[0], '==', w[1]];
     if (IS_PREVIEW) {
-      const f = () => cb(Object.entries(mem[p] || {}).map(([id, v]) => ({id, ...v})).filter(x => !w || x[w[0]] === w[1]));
+      const f = () => cb(Object.entries(mem[p] || {}).map(([id, v]) => ({id, ...v})).filter(x => !w || (w[1] === '==' ? x[w[0]] === w[2] : x[w[0]] >= w[2])));
       watchers.add(f); f(); return () => watchers.delete(f);
     }
-    let q = F.collection(db, ...P(p)); if (w) q = F.query(q, F.where(w[0], '==', w[1]));
+    let q = F.collection(db, ...P(p)); if (w) q = F.query(q, F.where(w[0], w[1], w[2]));
     return F.onSnapshot(q, s => cb(s.docs.map(d => ({id:d.id, ...d.data()}))), er => toast('Gagal memuat data: ' + er.code, 1));
   },
   async get(p, id) {
@@ -171,10 +173,15 @@ async function seed() { // Data dummy: HANYA saat IS_PREVIEW
     s2: {siswaId:'1002', kelas:'8B', tanggal:today(), topik:'Sering terlambat masuk kelas', jenis:'Konseling Individu', tingkat:'Berat', tindak:'', status:'Baru'}
   };
   mem.kelas = {k1:{nama:'7A', walikelas:'Bapak Dedi Hartono'}, k2:{nama:'8B', walikelas:''}};
+  const ago = d => { const x = new Date(); x.setDate(x.getDate() - d); return `${ym(x)}-${p2(x.getDate())}`; };
+  mem.absensi = {
+    [ago(1) + '_k1']: {tanggal:ago(1), kelas:'7A', rekap:{'1001':'A'}, oleh:'Bapak Dedi Hartono', updated:n},
+    [ago(2) + '_k1']: {tanggal:ago(2), kelas:'7A', rekap:{'1001':'A'}, oleh:'Bapak Dedi Hartono', updated:n}
+  };
   mem.tatib = {t1:{pasal:'Terlambat masuk sekolah', poin:5, tingkat:'Ringan'}, t2:{pasal:'Perkelahian', poin:50, tingkat:'Berat'}};
   mem.kasus = {
     k1: {siswaId:'1001', nama:'Rina Septiani', kelas:'7A', tanggal:today(), kategori:'Akademik', tingkat:'Sedang', ringkasan:'Sering tidak mengumpulkan tugas dan nilai menurun.', tahap:1, status:'Terbuka', pelanggaran:[{pasal:'Terlambat masuk sekolah', poin:5, tgl:today()}], dibuatOleh:'Bapak Dedi Hartono', updated:n},
-    k2: {siswaId:'1002', nama:'Ahmad Farhan', kelas:'8B', tanggal:today(), kategori:'Perilaku', tingkat:'Berat', ringkasan:'Terlibat perkelahian dengan teman sekelas.', tahap:2, status:'Terbuka', pelanggaran:[{pasal:'Perkelahian', poin:50, tgl:today()}], dibuatOleh:'Ibu Citra Lestari', updated:n}
+    k2: {siswaId:'1002', nama:'Ahmad Farhan', kelas:'8B', tanggal:today(), kategori:'Perilaku', tingkat:'Berat', ringkasan:'Terlibat perkelahian dengan teman sekelas.', tahap:2, status:'Terbuka', pelanggaran:[{pasal:'Perkelahian', poin:50, tgl:today()}], dibuatOleh:'Ibu Citra Lestari', updated:n - 9 * 864e5}
   };
   mem['kasus/k1/langkah'] = {l1: {jenis:'identifikasi', tanggal:today(), uraian:'Nilai tugas menurun dua minggu terakhir.', oleh:'Bapak Dedi Hartono', tahap:1, akses:'semua', waktu:n-3600000}};
   mem['kasus/k2/langkah'] = {l2: {jenis:'konseling', tanggal:today(), uraian:'Wawancara awal, siswa bersedia bercerita.', oleh:'Ibu Citra Lestari', tahap:2, akses:'bk', waktu:n-1800000}};
@@ -186,14 +193,14 @@ let S = null, D = {}, unsubs = [], charts = [], view = 'dashboard', sel = null, 
 const R = {from: ym(new Date()) + '-01', to: today()};
 let ks = null, KF = 'all', LK = [], ku = null, kt = null;
 const g = () => S?.role === 'gurubk';
-const resetD = () => D = {users:[], agenda_bk:[], catatan_pribadi:[], bimbingan_sesi:[], chats:[], kelas:[], admins:[], kasus:[], tatib:[], sekolah:{}};
+const resetD = () => D = {absensi:[], users:[], agenda_bk:[], catatan_pribadi:[], bimbingan_sesi:[], chats:[], kelas:[], admins:[], kasus:[], tatib:[], sekolah:{}};
 resetD();
 const nm = id => D.users.find(u => u.id === id)?.nama || '-';
 const ROLE = () => ({gurubk:'Guru BK', wakasek:'Wakasek Kesiswaan', walikelas:'Walikelas ' + (S.kelas || ''), siswa:'Siswa ' + (S.kelas || '')})[S.role];
 const RL = {gurubk:'Guru BK', walikelas:'Walikelas', wakasek:'Wakasek Kesiswaan'};
 const M = {
-  gurubk: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['kasus','Kasus','folder-open'],['konsultasi','Konsultasi','comments'],['agenda','Agenda','calendar'],['catatan','Catatan Pribadi','note-sticky'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
-  walikelas: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['kasus','Kasus','folder-open'],['konsultasi','Sesi Konseling','comments'],['agenda','Agenda','calendar'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
+  gurubk: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['kasus','Kasus','folder-open'],['konsultasi','Konsultasi','comments'],['agenda','Agenda','calendar'],['absensi','Absensi','clipboard-user'],['catatan','Catatan Pribadi','note-sticky'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
+  walikelas: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['kasus','Kasus','folder-open'],['konsultasi','Sesi Konseling','comments'],['agenda','Agenda','calendar'],['absensi','Absensi','clipboard-user'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
   wakasek: [['dashboard','Dashboard','table-cells-large'],['kasus','Kasus','folder-open'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['agenda','Agenda','calendar'],['pengaturan','Pengaturan','gear']],
   siswa: [['dashboard','Beranda','house'],['agenda','Agenda','calendar'],['konsultasi','Konsultasi','comments'],['pengaturan','Profil','user']]
 };
@@ -238,7 +245,7 @@ const A = window.A = {
   yes: async () => { A.close(); try { await Y(); } catch (x) { toast('Gagal: ' + (x.code || x.message), 1); } },
   sb: () => { $('#sb').classList.toggle('-translate-x-full'); $('#ov').classList.toggle('hidden'); },
   go: k => { view = k; if (k === 'kasus') ks = null; if (innerWidth < 768 && !$('#sb').classList.contains('-translate-x-full')) A.sb(); render(); },
-  q: v => { Q = v; render(); const i = $('#q'); i.focus(); i.setSelectionRange(v.length, v.length); },
+  q: v => { Q = v; PGS.siswa = 1; render(); const i = $('#q'); i.focus(); i.setSelectionRange(v.length, v.length); },
   tab: m => {
     mode = m; $('#lbU').textContent = m === 'admin' ? 'Email' : 'NIS'; $('#lu').type = m === 'admin' ? 'email' : 'text'; $('#le').textContent = '';
     $('#tAdmin').className = 'py-2 rounded-md ' + (m === 'admin' ? 'bg-white shadow text-blue-700' : 'text-gray-500');
@@ -428,8 +435,8 @@ const A = window.A = {
   },
   openK: id => { ks = id; view = 'kasus'; render(); },
   back: () => { ks = null; render(); },
-  kf: v => { KF = v; render(); },
-  newKasus: () => D.users.length ? form('Kasus Baru', [f('siswaId','Siswa','select',sisOpt()), f('tanggal','Tanggal','date'), f('kategori','Kategori','select',['Perilaku', 'Akademik', 'Kehadiran', 'Pergaulan', 'Lainnya']), f('tingkat','Tingkat','select',['Ringan', 'Sedang', 'Berat']), f('ringkasan','Ringkasan masalah','textarea')], {tanggal:today()}, async v => {
+  kf: v => { KF = v; PGS.kasus = 1; render(); },
+  newKasus: pre => D.users.length ? form('Kasus Baru', [f('siswaId','Siswa','select',sisOpt()), f('tanggal','Tanggal','date'), f('kategori','Kategori','select',['Perilaku', 'Akademik', 'Kehadiran', 'Pergaulan', 'Lainnya']), f('tingkat','Tingkat','select',['Ringan', 'Sedang', 'Berat']), f('ringkasan','Ringkasan masalah','textarea')], {tanggal:today(), ...(pre || {})}, async v => {
     const u = D.users.find(x => x.id === v.siswaId);
     await DB.set('kasus', rnd(8), {siswaId:u.id, nama:u.nama, kelas:u.kelas, tanggal:v.tanggal, kategori:v.kategori, tingkat:v.tingkat, ringkasan:v.ringkasan.trim(), tahap:S.role === 'walikelas' ? 1 : 2, status:'Terbuka', pelanggaran:[], dibuatOleh:S.nama, updated:Date.now()});
     toast('Kasus dibuka');
@@ -444,7 +451,28 @@ const A = window.A = {
   reopen: () => ask('Buka kembali kasus?', 'Kasus kembali berstatus terbuka.', async () => { await DB.set('kasus', ks, {status:'Terbuka', hasil:'', updated:Date.now()}); toast('Kasus dibuka kembali'); }),
   rmKasus: () => ask('Hapus kasus ini?', 'Seluruh linimasa kasus ikut dihapus dan tidak dapat dikembalikan.', async () => { const id = ks; for (const x of LK) await DB.del(`kasus/${id}/langkah`, x.id); await DB.del('kasus', id); ks = null; toast('Kasus dihapus'); render(); }),
   doc: t => { const k = ck(); if (k) showPaper(DOC[t](k)); },
-  saveBatas: async ev => { ev.preventDefault(); const b = Math.max(0, +new FormData(ev.target).get('batas') || 0); try { await DB.set('pengaturan', 'sekolah', {batasPoin:b}); D.sekolah = {...D.sekolah, batasPoin:b}; toast('Batas poin tersimpan'); render(); } catch (x) { toast('Gagal: ' + (x.code || x.message), 1); } },
+  saveBatas: async ev => { ev.preventDefault(); const fd = new FormData(ev.target), b = Math.max(0, +fd.get('batas') || 0), hr = Math.max(1, +fd.get('hari') || 7); try { await DB.set('pengaturan', 'sekolah', {batasPoin:b, batasHari:hr}); D.sekolah = {...D.sekolah, batasPoin:b, batasHari:hr}; toast('Pengaturan tersimpan'); render(); } catch (x) { toast('Gagal: ' + (x.code || x.message), 1); } },
+  pg: (k, d) => { PGS[k] += d; render(); },
+  notif() { const o = notifs(); info('Pemberitahuan', o.length ? `<div class="space-y-2">${o.map(x => `<button onclick="A.close();${x.a}" class="w-full text-left text-sm px-3 py-2 rounded-lg border hover:bg-blue-50"><i class="fa-solid fa-${x.i} mr-2 text-blue-600"></i>${e(x.t)}</button>`).join('')}</div>` : 'Tidak ada pemberitahuan.'); },
+  ab: (id, s) => { AB.st[id] = s; AB.dirty = true; render(); },
+  abAll: () => { abSis().forEach(u => AB.st[u.id] = 'H'); AB.dirty = true; render(); },
+  abKelas: v => { AB.kelas = v; render(); },
+  abTgl: v => { AB.tgl = v && v <= today() ? v : today(); render(); },
+  async abSave() {
+    const kl = D.kelas.find(k => k.nama === AB.kelas); if (!kl) return toast('Kelas tidak ditemukan', 1);
+    if (AB.tgl > today()) return toast('Tanggal tidak boleh di masa depan', 1);
+    const rekap = {}; abSis().forEach(u => rekap[u.id] = AB.st[u.id] || 'H');
+    try { await DB.set('absensi', abId(), {tanggal:AB.tgl, kelas:AB.kelas, rekap, oleh:S.nama, updated:Date.now()}); AB.dirty = false; toast('Absensi tersimpan'); } catch (x) { toast('Gagal menyimpan: ' + (x.code || x.message), 1); }
+  },
+  kasusAbsen: (id, n) => A.newKasus({siswaId:id, kategori:'Kehadiran', ringkasan:`Alpa ${n} kali pada bulan ${AB.tgl.slice(0, 7)}.`}),
+  xlsx() {
+    const wb = XLSX.utils.book_new(), add = (rows, w, n) => { const s = XLSX.utils.aoa_to_sheet(rows); s['!cols'] = w.map(x => ({wch:x})); XLSX.utils.book_append_sheet(wb, s, n); };
+    add([['Tanggal', 'Siswa', 'Kelas', 'Topik', 'Jenis', 'Tingkat', 'Status', 'Tindak lanjut'], ...repData().map(s => [s.tanggal, nm(s.siswaId), s.kelas, s.topik, s.jenis, s.tingkat, s.status, s.tindak || ''])], [12, 26, 8, 36, 20, 10, 10, 36], 'Sesi Bimbingan');
+    add([['Tanggal', 'Siswa', 'Kelas', 'Kategori', 'Tingkat', 'Posisi', 'Status', 'Total poin', 'Ringkasan', 'Hasil'], ...D.kasus.filter(k => k.tanggal >= R.from && k.tanggal <= R.to).map(k => [k.tanggal, k.nama, k.kelas, k.kategori, k.tingkat, k.status === 'Selesai' ? '-' : TH[k.tahap], k.status, (k.pelanggaran || []).reduce((a, p) => a + (+p.poin || 0), 0), k.ringkasan, k.hasil || ''])], [12, 26, 8, 12, 10, 12, 10, 10, 50, 30], 'Kasus');
+    const ad = D.absensi.filter(a => a.tanggal >= R.from && a.tanggal <= R.to);
+    add([['Siswa', 'Kelas', 'Hadir', 'Sakit', 'Izin', 'Alpa', 'Terlambat'], ...D.users.map(u => { const c = {H:0, S:0, I:0, A:0, T:0}; ad.forEach(d => { const s = d.rekap?.[u.id]; if (s) c[s]++; }); return [u.nama, u.kelas, c.H, c.S, c.I, c.A, c.T]; })], [26, 8, 8, 8, 8, 8, 10], 'Absensi');
+    XLSX.writeFile(wb, 'laporan-bimbingan.xlsx');
+  },
   rep: (k, v) => { R[k] = v; render(); },
   csv() {
     const safe = x => { const s = String(x ?? ''); return '"' + (/^[=+\-@]/.test(s) ? "'" + s : s).replace(/"/g, '""') + '"'; };
@@ -549,8 +577,8 @@ const stepSave = (k, j) => async v => {
   await DB.set('kasus', k.id, up); toast('Langkah dicatat' + (up.tahap ? ' dan kasus dialihkan ke ' + TH[up.tahap] : ''));
 };
 const kasusBlock = poin => {
-  const t = todo(), w = poin ? warn() : [];
-  return `<div class="grid ${poin ? 'md:grid-cols-2' : ''} gap-4 mb-5"><div class="card"><h3 class="font-bold mb-3">Menunggu tindakan Anda (${t.length})</h3>${t.slice(0, 5).map(k => `<div class="flex justify-between items-center gap-2 text-sm mb-2"><span><b>${e(k.nama)}</b> - ${e(k.kategori)} ${badge(k.tingkat)}</span><button onclick="A.openK('${k.id}')" class="btn2 !py-1 !px-2 text-xs">Buka</button></div>`).join('') || '<p class="text-sm text-gray-400">Tidak ada kasus yang menunggu tindakan Anda.</p>'}</div>${poin ? `<div class="card"><h3 class="font-bold mb-3">Poin pelanggaran mencapai batas</h3>${+D.sekolah.batasPoin ? (w.map(x => `<div class="flex justify-between text-sm mb-2"><b>${e(D.kasus.find(k => k.siswaId === x.id)?.nama)}</b><span class="text-red-600 font-semibold">${x.poin} poin</span></div>`).join('') || '<p class="text-sm text-gray-400">Belum ada siswa yang mencapai batas.</p>') : '<p class="text-sm text-gray-400">Batas poin belum diatur (Pengaturan > Tata Tertib).</p>'}</div>` : ''}</div>`;
+  const t = todo(), w = poin ? warn() : [], tt = D.kasus.filter(tunda).sort((a, b) => (a.updated || 0) - (b.updated || 0));
+  return `<div class="grid md:grid-cols-${poin ? 3 : 2} gap-4 mb-5"><div class="card"><h3 class="font-bold mb-3">Menunggu tindakan Anda (${t.length})</h3>${t.slice(0, 5).map(k => `<div class="flex justify-between items-center gap-2 text-sm mb-2"><span><b>${e(k.nama)}</b> - ${e(k.kategori)} ${badge(k.tingkat)}${tundaTag(k)}</span><button onclick="A.openK('${k.id}')" class="btn2 !py-1 !px-2 text-xs">Buka</button></div>`).join('') || '<p class="text-sm text-gray-400">Tidak ada kasus yang menunggu tindakan Anda.</p>'}</div><div class="card"><h3 class="font-bold mb-3">Kasus tertunda (${tt.length})</h3>${tt.slice(0, 5).map(k => `<div class="flex justify-between items-center gap-2 text-sm mb-2"><span><b>${e(k.nama)}</b> - ${TH[k.tahap]}, ${hariT(k)} hari</span><button onclick="A.openK('${k.id}')" class="btn2 !py-1 !px-2 text-xs">Buka</button></div>`).join('') || `<p class="text-sm text-gray-400">Tidak ada kasus tertunda (batas ${lim()} hari).</p>`}</div>${poin ? `<div class="card"><h3 class="font-bold mb-3">Poin pelanggaran mencapai batas</h3>${+D.sekolah.batasPoin ? (w.map(x => `<div class="flex justify-between text-sm mb-2"><b>${e(D.kasus.find(k => k.siswaId === x.id)?.nama)}</b><span class="text-red-600 font-semibold">${x.poin} poin</span></div>`).join('') || '<p class="text-sm text-gray-400">Belum ada siswa yang mencapai batas.</p>') : '<p class="text-sm text-gray-400">Batas poin belum diatur (Pengaturan > Tata Tertib).</p>'}</div>` : ''}</div>`;
 };
 const showPaper = h => {
   const c = $('#cards'); c.innerHTML = `<div class="noprint sticky top-0 bg-white border-b px-4 py-3 flex gap-2 z-10"><b class="mr-auto">Pratinjau dokumen</b><button onclick="print()" class="btn1"><i class="fa-solid fa-print mr-1"></i>Cetak</button><button onclick="A.cardClose()" class="btn2">Tutup</button></div><p class="noprint text-xs text-amber-800 bg-amber-50 px-4 py-2">Templat umum. Sesuaikan nomor dan format surat dengan ketentuan sekolah sebelum dicetak. Dokumen bersifat rahasia.</p>${h}`;
@@ -574,6 +602,7 @@ const kasusDetail = k => {
   const db = (t, l) => `<button onclick="A.doc('${t}')" class="btn2 !py-1.5 text-xs"><i class="fa-solid fa-print mr-1"></i>${l}</button>`;
   return `<button onclick="A.back()" class="text-sm text-blue-600 mb-3"><i class="fa-solid fa-arrow-left mr-1"></i>Kembali ke daftar kasus</button>
   <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 mb-4"><i class="fa-solid fa-lock mr-1"></i>Data kasus bersifat rahasia. Jangan diumumkan di depan kelas atau di grup WhatsApp.</div>
+  ${tunda(k) ? `<div class="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2 mb-4"><i class="fa-solid fa-clock mr-1"></i>Kasus ini belum ada tindakan selama ${hariT(k)} hari (batas ${lim()} hari).</div>` : ''}
   <div class="grid lg:grid-cols-3 gap-4"><div class="lg:col-span-2 space-y-4">
    <div class="card"><div class="flex flex-wrap justify-between gap-2"><div><h2 class="text-xl font-bold">${e(k.nama)}</h2><p class="text-sm text-gray-500">Kelas ${e(k.kelas)} &middot; dibuka ${fmtD(k.tanggal)} oleh ${e(k.dibuatOleh)}</p></div><div class="flex gap-2 items-start">${badge(k.tingkat)}${badge(k.status)}</div></div>
     <div class="flex gap-1 mt-4 text-xs">${[1, 2, 3].map(t => `<div class="flex-1 text-center py-1.5 rounded ${k.tahap >= t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}">${t}. ${TH[t]}</div>`).join('')}</div>
@@ -592,6 +621,31 @@ const kasusRekap = () => {
   return `<h3 class="font-bold mb-2">Rekap Kasus (${kr.length})</h3><div class="grid md:grid-cols-4 gap-4 mb-4"><div class="card"><h4 class="font-semibold mb-1">Posisi</h4>${c(k => k.status === 'Selesai' ? 'Selesai' : TH[k.tahap], ['Wali Kelas', 'Guru BK', 'Kesiswaan', 'Selesai'])}</div><div class="card"><h4 class="font-semibold mb-1">Tingkat</h4>${c(k => k.tingkat, ['Ringan', 'Sedang', 'Berat'])}</div><div class="card md:col-span-2"><h4 class="font-semibold mb-1">Kategori</h4>${c(k => k.kategori, ['Perilaku', 'Akademik', 'Kehadiran', 'Pergaulan', 'Lainnya'])}</div></div>`;
 };
 
+// ---------- Absensi, pemantauan, paging, footer ----------
+const ALPA = 3, PS = 25, PGS = {siswa:1, kasus:1};
+const FOOT = '<footer class="noprint mt-8 pt-4 border-t text-center text-xs text-gray-500">Dibuat dengan <i class="fa-solid fa-heart text-red-500"></i> oleh Kakang Asmil &middot; <i class="fa-regular fa-copyright"></i> 2026 BISA - Bimbingan Siswa Digital</footer>';
+const lim = () => +D.sekolah.batasHari || 7;
+const hariT = k => Math.floor((Date.now() - (k.updated || 0)) / 864e5);
+const tunda = k => k.status === 'Terbuka' && hariT(k) >= lim();
+const tundaTag = k => tunda(k) ? ` <span class="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Tertunda ${hariT(k)} hari</span>` : '';
+const alpaCount = (docs, id) => docs.reduce((a, d) => a + (d.rekap?.[id] === 'A' ? 1 : 0), 0);
+const alpaFlags = () => { const m = ym(new Date()), docs = D.absensi.filter(a => a.tanggal?.startsWith(m)); return D.users.map(u => ({id:u.id, nama:u.nama, kelas:u.kelas, n:alpaCount(docs, u.id)})).filter(x => x.n >= ALPA); };
+const notifs = () => {
+  if (!S || S.role === 'siswa') return []; const o = [];
+  if (g()) D.chats.filter(c => c.status === 'Menunggu Balasan').forEach(c => o.push({i:'comments', t:`Chat dari ${c.nama} menunggu balasan`, a:"A.go('konsultasi')"}));
+  D.kasus.filter(k => tunda(k) && (g() || k.tahap === myTahap())).forEach(k => o.push({i:'clock', t:`Kasus ${k.nama} tertunda ${hariT(k)} hari di tahap ${TH[k.tahap]}`, a:`A.openK('${k.id}')`}));
+  if (S.role !== 'wakasek') alpaFlags().forEach(x => o.push({i:'user-clock', t:`${x.nama} (${x.kelas}) alpa ${x.n} kali bulan ini`, a:"A.go('absensi')"}));
+  return o;
+};
+const page = (arr, k) => {
+  const pages = Math.max(1, Math.ceil(arr.length / PS)); PGS[k] = Math.min(Math.max(1, PGS[k]), pages);
+  return {rows:arr.slice((PGS[k] - 1) * PS, PGS[k] * PS), pager:arr.length > PS ? `<div class="flex flex-wrap items-center justify-between gap-2 mt-3 text-sm"><span class="text-gray-500">${arr.length} data</span><div class="flex items-center gap-2"><button onclick="A.pg('${k}',-1)" class="btn2 !py-1" ${PGS[k] <= 1 ? 'disabled' : ''}>Sebelumnya</button><span>Hal ${PGS[k]} / ${pages}</span><button onclick="A.pg('${k}',1)" class="btn2 !py-1" ${PGS[k] >= pages ? 'disabled' : ''}>Berikutnya</button></div></div>` : ''};
+};
+const AB = {kelas:'', tgl:today(), key:'', st:{}, dirty:false};
+const abSis = () => D.users.filter(u => u.kelas === AB.kelas && u.aktif !== false).sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+const abId = () => { const kl = D.kelas.find(k => k.nama === AB.kelas); return kl ? AB.tgl + '_' + kl.id : ''; };
+const ABS = [['H', 'Hadir', 'green'], ['S', 'Sakit', 'blue'], ['I', 'Izin', 'amber'], ['A', 'Alpa', 'red'], ['T', 'Terlambat', 'orange']];
+
 const V = {
   dashboard() {
     if (S.role === 'wakasek') return hdr('Dashboard', 'Kasus yang menunggu keputusan Kesiswaan') + kasusBlock(false);
@@ -607,7 +661,7 @@ const V = {
     const q = Q.toLowerCase(), r = D.users.filter(u => (u.nama + u.nis + u.kelas).toLowerCase().includes(q)).sort((a, b) => (a.kelas || '').localeCompare(b.kelas || '') || (a.nama || '').localeCompare(b.nama || ''));
     return hdr('Direktori Data Siswa', 'Identitas, kelas, dan akses login siswa.', g() ? '<div class="flex flex-wrap gap-2"><button onclick="A.cardOpen()" class="btn2"><i class="fa-solid fa-id-card mr-1"></i>Kartu Login</button><button onclick="A.impOpen()" class="btn2"><i class="fa-solid fa-file-excel mr-1"></i>Impor Excel</button><button onclick="A.addSiswa()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Siswa</button></div>' : '') +
       `<input id="q" class="inp !mt-0 mb-3 md:max-w-sm" placeholder="Cari nama, NIS, atau kelas" value="${e(Q)}" oninput="A.q(this.value)">` +
-      tbl(['Nama', 'NIS', 'Kelas', 'JK', 'Status', g() ? 'Aksi' : ''], r.map(u => [e(u.nama), e(u.nis), e(u.kelas), e(u.jk), badge(u.aktif === false ? 'Nonaktif' : 'Aktif'), g() ? `<span class="whitespace-nowrap"><button onclick="A.editSiswa('${u.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.reset('${u.id}')" class="text-amber-600 mr-3" aria-label="Reset password"><i class="fa-solid fa-key"></i></button><button onclick="A.delSiswa('${u.id}')" class="text-red-500" aria-label="Hapus"><i class="fa-solid fa-trash"></i></button></span>` : '']), 'Belum ada data siswa.');
+      tbl(['Nama', 'NIS', 'Kelas', 'JK', 'Status', g() ? 'Aksi' : ''], page(r, 'siswa').rows.map(u => [e(u.nama), e(u.nis), e(u.kelas), e(u.jk), badge(u.aktif === false ? 'Nonaktif' : 'Aktif'), g() ? `<span class="whitespace-nowrap"><button onclick="A.editSiswa('${u.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.reset('${u.id}')" class="text-amber-600 mr-3" aria-label="Reset password"><i class="fa-solid fa-key"></i></button><button onclick="A.delSiswa('${u.id}')" class="text-red-500" aria-label="Hapus"><i class="fa-solid fa-trash"></i></button></span>` : '']), 'Belum ada data siswa.') + page(r, 'siswa').pager;
   },
   catatan() {
     const r = [...D.catatan_pribadi].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
@@ -625,17 +679,31 @@ const V = {
     return hdr(g() ? 'Bimbingan & Konseling' : 'Sesi Konseling', 'Riwayat sesi bimbingan dan chat konsultasi siswa.', addB('bimbingan_sesi', 'Tambah Sesi')) +
       `<div class="grid ${g() ? 'xl:grid-cols-5' : ''} gap-4"><div class="${g() ? 'xl:col-span-3' : ''}">${tbl(['Tanggal', 'Siswa', 'Topik', 'Tingkat', 'Status', g() ? 'Aksi' : ''], r.map(s => [fmtD(s.tanggal), e(nm(s.siswaId)), e(s.topik), badge(s.tingkat), badge(s.status), act('bimbingan_sesi', s.id)]), 'Belum ada sesi bimbingan.')}</div>${g() ? `<div class="xl:col-span-2">${chatPanel()}</div>` : ''}</div>`;
   },
+  absensi() {
+    const kls = S.role === 'walikelas' ? [S.kelas] : kelasOpt(); if (!kls.includes(AB.kelas)) AB.kelas = kls[0] || '';
+    if (!AB.kelas) return hdr('Absensi Siswa', 'Catatan kehadiran harian per kelas.') + empty('Belum ada kelas. Tambahkan kelas di Pengaturan.');
+    const sis = abSis(), id = abId(), saved = D.absensi.find(a => a.id === id);
+    if (AB.key !== id) { AB.key = id; AB.dirty = false; } if (!AB.dirty) AB.st = {...(saved?.rekap || {})};
+    const cur = u => AB.st[u.id] || 'H', bl = AB.tgl.slice(0, 7), docs = D.absensi.filter(a => a.kelas === AB.kelas && a.tanggal?.startsWith(bl));
+    const rekap = sis.map(u => { const c = {H:0, S:0, I:0, A:0, T:0}; docs.forEach(d => { const s = d.rekap?.[u.id]; if (s) c[s]++; });
+      const open = D.kasus.some(k => k.siswaId === u.id && k.kategori === 'Kehadiran' && k.status === 'Terbuka');
+      return [e(u.nama), c.H, c.S, c.I, c.A, c.T, c.A >= ALPA ? `<span class="text-red-600 text-xs font-semibold">Alpa ${ALPA}x atau lebih</span>${open ? '' : ` <button onclick="A.kasusAbsen('${u.id}',${c.A})" class="btn2 !py-1 !px-2 text-xs ml-1">Buka kasus</button>`}` : '']; });
+    return hdr('Absensi Siswa', 'Catat kehadiran harian. Alpa berulang menjadi tanda awal untuk membuka kasus.') +
+      `<div class="card mb-4 flex flex-wrap items-end gap-3"><label class="text-sm font-medium">Kelas${S.role === 'walikelas' ? `<div class="inp !bg-gray-50">${e(S.kelas)}</div>` : `<select class="inp" onchange="A.abKelas(this.value)">${kls.map(k => `<option${k === AB.kelas ? ' selected' : ''}>${e(k)}</option>`).join('')}</select>`}</label><label class="text-sm font-medium">Tanggal<input type="date" max="${today()}" class="inp" value="${AB.tgl}" onchange="A.abTgl(this.value)"></label><button onclick="A.abAll()" class="btn2">Semua hadir</button><button onclick="A.abSave()" class="btn1"><i class="fa-solid fa-floppy-disk mr-1"></i>Simpan absensi</button>${saved ? `<span class="text-xs text-green-700">Tersimpan oleh ${e(saved.oleh)}</span>` : '<span class="text-xs text-gray-400">Belum disimpan untuk tanggal ini</span>'}</div>` +
+      (sis.length ? `<div class="card !p-0 overflow-x-auto mb-6"><table class="w-full text-sm tb"><thead><tr><th>Nama</th><th>Status kehadiran</th></tr></thead><tbody>${sis.map(u => `<tr><td>${e(u.nama)}</td><td><div class="flex flex-wrap gap-1">${ABS.map(([c, l, col]) => `<button onclick="A.ab('${u.id}','${c}')" title="${l}" class="px-2.5 py-1 rounded text-xs font-semibold ${cur(u) === c ? `bg-${col}-500 text-white` : 'bg-gray-100 text-gray-500'}">${c}</button>`).join('')}</div></td></tr>`).join('')}</tbody></table></div>` : empty('Belum ada siswa aktif di kelas ini.')) +
+      `<h3 class="font-bold mb-1">Rekap bulan ${bl}</h3><p class="text-xs text-gray-500 mb-2">H hadir, S sakit, I izin, A alpa, T terlambat. Data tersedia untuk beberapa bulan terakhir.</p>` + tbl(['Nama', 'H', 'S', 'I', 'A', 'T', 'Catatan'], rekap, 'Belum ada data rekap.');
+  },
   kasus() {
     const k = ks && ck(); if (ks && !k) ks = null; if (k) return kasusDetail(k);
     const L = D.kasus.filter(x => KF === 'all' || (KF === 'open' ? x.status === 'Terbuka' : x.status === 'Selesai')).sort((a, b) => (a.status === 'Selesai') - (b.status === 'Selesai') || (b.tanggal || '').localeCompare(a.tanggal || ''));
     const tab = (v, l) => `<button onclick="A.kf('${v}')" class="px-3 py-1.5 rounded-lg text-sm ${KF === v ? 'bg-blue-600 text-white' : 'bg-white border'}">${l}</button>`;
     return hdr('Kasus Siswa', 'Penanganan bertahap: Wali Kelas, Guru BK, lalu Kesiswaan. Data bersifat rahasia.', S.role === 'wakasek' ? '' : '<button onclick="A.newKasus()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Kasus baru</button>') + `<div class="flex gap-2 mb-3">${tab('all', 'Semua')}${tab('open', 'Terbuka')}${tab('done', 'Selesai')}</div>` +
-      tbl(['Tanggal', 'Siswa', 'Kelas', 'Kategori', 'Tingkat', 'Tahap', 'Status', ''], L.map(x => [fmtD(x.tanggal), e(x.nama), e(x.kelas), e(x.kategori), badge(x.tingkat), x.status === 'Selesai' ? '-' : TH[x.tahap], badge(x.status), `<button onclick="A.openK('${x.id}')" class="text-blue-600 font-medium">Buka</button>`]), 'Belum ada kasus.');
+      tbl(['Tanggal', 'Siswa', 'Kelas', 'Kategori', 'Tingkat', 'Tahap', 'Status', ''], page(L, 'kasus').rows.map(x => [fmtD(x.tanggal), e(x.nama), e(x.kelas), e(x.kategori), badge(x.tingkat), x.status === 'Selesai' ? '-' : TH[x.tahap], badge(x.status) + tundaTag(x), `<button onclick="A.openK('${x.id}')" class="text-blue-600 font-medium">Buka</button>`]), 'Belum ada kasus.') + page(L, 'kasus').pager;
   },
   monitoring() {
     const cols = [['Wali Kelas', k => k.status === 'Terbuka' && k.tahap === 1], ['Guru BK', k => k.status === 'Terbuka' && k.tahap === 2], ['Kesiswaan', k => k.status === 'Terbuka' && k.tahap === 3], ['Selesai', k => k.status === 'Selesai']], rank = {Berat:0, Sedang:1, Ringan:2};
     return hdr('Monitoring Kasus', 'Posisi setiap kasus pada tahap penanganan.') + `<div class="grid md:grid-cols-2 xl:grid-cols-4 gap-4">${cols.map(([c, fn]) => { const l = D.kasus.filter(fn).sort((a, b) => rank[a.tingkat] - rank[b.tingkat]);
-      return `<div class="bg-slate-200/60 rounded-xl p-3"><div class="flex justify-between mb-2 px-1"><b class="text-sm">${c}</b><span class="text-xs text-gray-500">${l.length}</span></div>${l.map(k => `<div class="card !p-3 mb-2 text-sm"><div class="flex justify-between gap-2"><b>${e(k.nama)}</b>${badge(k.tingkat)}</div><p class="my-1">${e(k.kategori)}</p><div class="text-xs text-gray-500">${fmtD(k.tanggal)} &middot; ${e(k.kelas)}</div><button onclick="A.openK('${k.id}')" class="btn2 !py-1 !px-2 text-xs mt-2">Buka kasus</button></div>`).join('') || '<p class="text-xs text-gray-400 text-center py-4">Kosong</p>'}</div>`; }).join('')}</div>`;
+      return `<div class="bg-slate-200/60 rounded-xl p-3"><div class="flex justify-between mb-2 px-1"><b class="text-sm">${c}</b><span class="text-xs text-gray-500">${l.length}</span></div>${l.map(k => `<div class="card !p-3 mb-2 text-sm"><div class="flex justify-between gap-2"><b>${e(k.nama)}</b>${badge(k.tingkat)}</div><p class="my-1">${e(k.kategori)}${tundaTag(k)}</p><div class="text-xs text-gray-500">${fmtD(k.tanggal)} &middot; ${e(k.kelas)}</div><button onclick="A.openK('${k.id}')" class="btn2 !py-1 !px-2 text-xs mt-2">Buka kasus</button></div>`).join('') || '<p class="text-xs text-gray-400 text-center py-4">Kosong</p>'}</div>`; }).join('')}</div>`;
   },
   dokumen() {
     const L = [...D.kasus].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
@@ -643,7 +711,7 @@ const V = {
   },
   laporan() {
     const r = repData(), cnt = (k, vals) => vals.map(v => `<div class="flex justify-between text-sm py-1"><span>${v}</span><b>${r.filter(s => s[k] === v).length}</b></div>`).join('');
-    return hdr('Laporan Bimbingan', 'Rekap sesi per periode.', '<div class="noprint flex gap-2"><button onclick="A.csv()" class="btn2"><i class="fa-solid fa-file-csv mr-1"></i>Ekspor CSV</button><button onclick="print()" class="btn1"><i class="fa-solid fa-print mr-1"></i>Cetak</button></div>') +
+    return hdr('Laporan Bimbingan', 'Rekap sesi per periode.', '<div class="noprint flex gap-2"><button onclick="A.csv()" class="btn2"><i class="fa-solid fa-file-csv mr-1"></i>CSV</button><button onclick="A.xlsx()" class="btn2"><i class="fa-solid fa-file-excel mr-1"></i>Excel</button><button onclick="print()" class="btn1"><i class="fa-solid fa-print mr-1"></i>Cetak</button></div>') +
       `<div class="card mb-4 flex flex-wrap gap-3 items-end noprint"><label class="text-sm font-medium">Dari<input type="date" class="inp" value="${R.from}" onchange="A.rep('from',this.value)"></label><label class="text-sm font-medium">Sampai<input type="date" class="inp" value="${R.to}" onchange="A.rep('to',this.value)"></label></div>
       <div class="grid md:grid-cols-3 gap-4 mb-4"><div class="card"><h3 class="font-bold mb-1">Total sesi: ${r.length}</h3>${cnt('status', ['Baru', 'Proses', 'Selesai'])}</div><div class="card"><h3 class="font-bold mb-1">Per tingkat</h3>${cnt('tingkat', ['Ringan', 'Sedang', 'Berat'])}</div><div class="card"><h3 class="font-bold mb-1">Per jenis</h3>${cnt('jenis', ['Konseling Individu', 'Konseling Kelompok', 'Kunjungan Rumah', 'Lainnya'])}</div></div>${kasusRekap()}` +
       tbl(['Tanggal', 'Siswa', 'Kelas', 'Topik', 'Tingkat', 'Status'], r.map(s => [fmtD(s.tanggal), e(nm(s.siswaId)), e(s.kelas), e(s.topik), badge(s.tingkat), badge(s.status)]), 'Tidak ada sesi pada periode ini.');
@@ -655,7 +723,7 @@ const V = {
       ${adm ? `<div class="card"><h3 class="font-bold mb-3">Ganti Password</h3><form onsubmit="A.pass(event)" class="space-y-3"><label class="block text-sm font-medium">Password lama<input name="lama" type="password" class="inp" required></label><label class="block text-sm font-medium">Password baru (min. 8 karakter)<input name="baru" type="password" class="inp" minlength="8" required></label><button class="btn1">Ganti password</button></form></div>` : ''}
       ${g() ? `<div class="md:col-span-2"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Data Kelas</h3><button onclick="A.addKelas()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Kelas</button></div>${tbl(['Kelas', 'Walikelas', 'Jumlah Siswa', 'Aksi'], [...D.kelas].sort((a, b) => a.nama.localeCompare(b.nama, 'id', {numeric:true})).map(k => [e(k.nama), e(k.walikelas || '-'), D.users.filter(u => u.kelas === k.nama).length, `<span class="whitespace-nowrap"><button onclick="A.editKelas('${k.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.delKelas('${k.id}')" class="text-red-500" aria-label="Hapus"><i class="fa-solid fa-trash"></i></button></span>`]), 'Belum ada kelas. Tambahkan kelas agar data siswa bisa diisi.')}</div>` : ''}
       ${g() ? `<div class="md:col-span-2"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Akun Guru</h3><button onclick="A.addAdmin()" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Akun</button></div>${tbl(['Nama', 'Email', 'Peran', 'Kelas', 'Aksi'], [...D.admins].sort((a, b) => (a.nama || '').localeCompare(b.nama || '')).map(a => [e(a.nama) + (a.id === S.uid ? ' <span class="text-xs text-gray-400">(Anda)</span>' : ''), e(a.email || '-'), RL[a.role] || e(a.role), e(a.kelas || '-'), a.id === S.uid ? '' : `<span class="whitespace-nowrap"><button onclick="A.editAdmin('${a.id}')" class="text-blue-600 mr-3" aria-label="Ubah"><i class="fa-solid fa-pen"></i></button><button onclick="A.resetAdmin('${a.id}')" class="text-amber-600 mr-3" aria-label="Kirim reset password"><i class="fa-solid fa-key"></i></button><button onclick="A.delAdmin('${a.id}')" class="text-red-500" aria-label="Cabut akses"><i class="fa-solid fa-user-slash"></i></button></span>`]), 'Belum ada akun guru.')}</div>` : ''}
-      ${g() ? `<div class="md:col-span-2"><div class="flex flex-wrap justify-between items-center gap-2 mb-3"><h3 class="font-bold text-lg">Tata Tertib &amp; Poin Pelanggaran</h3><button onclick="A.new('tatib')" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Pasal</button></div><form onsubmit="A.saveBatas(event)" class="card mb-3 flex flex-wrap items-end gap-3"><label class="text-sm font-medium">Batas poin peringatan (0 = nonaktif)<input name="batas" type="number" min="0" class="inp" value="${+D.sekolah.batasPoin || 0}"></label><button class="btn1">Simpan batas</button></form>${tbl(['Pasal / pelanggaran', 'Poin', 'Tingkat', 'Aksi'], [...D.tatib].sort((a, b) => (+a.poin || 0) - (+b.poin || 0)).map(t => [e(t.pasal), e(t.poin), badge(t.tingkat), act('tatib', t.id)]), 'Belum ada pasal tata tertib.')}</div>` : ''}
+      ${g() ? `<div class="md:col-span-2"><div class="flex flex-wrap justify-between items-center gap-2 mb-3"><h3 class="font-bold text-lg">Tata Tertib &amp; Poin Pelanggaran</h3><button onclick="A.new('tatib')" class="btn1"><i class="fa-solid fa-plus mr-1"></i>Tambah Pasal</button></div><form onsubmit="A.saveBatas(event)" class="card mb-3 flex flex-wrap items-end gap-3"><label class="text-sm font-medium">Batas poin peringatan (0 = nonaktif)<input name="batas" type="number" min="0" class="inp" value="${+D.sekolah.batasPoin || 0}"></label><label class="text-sm font-medium">Kasus dianggap tertunda setelah (hari)<input name="hari" type="number" min="1" class="inp" value="${lim()}"></label><button class="btn1">Simpan pengaturan</button></form>${tbl(['Pasal / pelanggaran', 'Poin', 'Tingkat', 'Aksi'], [...D.tatib].sort((a, b) => (+a.poin || 0) - (+b.poin || 0)).map(t => [e(t.pasal), e(t.poin), badge(t.tingkat), act('tatib', t.id)]), 'Belum ada pasal tata tertib.')}</div>` : ''}
       ${g() ? `<div class="card md:col-span-2"><h3 class="font-bold mb-3">Data Sekolah</h3><form onsubmit="A.saveSek(event)" class="grid sm:grid-cols-2 gap-3"><label class="text-sm font-medium">Nama sekolah<input name="namaSekolah" class="inp" required value="${e(D.sekolah.namaSekolah)}"></label><label class="text-sm font-medium">Tahun ajaran<input name="tahunAjaran" class="inp" required value="${e(D.sekolah.tahunAjaran)}" placeholder="2026/2027"></label><div class="sm:col-span-2"><button class="btn1">Simpan</button></div></form></div>` : ''}</div>`;
   }
 };
@@ -678,14 +746,14 @@ const H = {
 
 function hd() {
   $('#sn').textContent = D.sekolah.namaSekolah || 'Buku Bimbingan Siswa Digital'; $('#un').textContent = S.nama; $('#ur').textContent = ROLE();
-  const n = D.chats.filter(c => c.status === 'Menunggu Balasan').length; $('#bell').classList.toggle('hidden', !g() || !n); $('#bc').textContent = n;
+  const n = notifs().length; $('#bell').classList.toggle('hidden', !n); $('#bc').textContent = n;
 }
 function render() {
   if (!S) return;
   charts.forEach(c => c.destroy()); charts = []; const dr = $('#ci')?.value;
   if (view !== 'konsultasi') { mu?.(); mu = null; mt = null; }
   if (view !== 'kasus' || !ks) { ku?.(); ku = null; kt = null; LK = []; }
-  $('#content').innerHTML = (V[view] || V.dashboard)(); H[view]?.();
+  $('#content').innerHTML = (V[view] || V.dashboard)() + FOOT; H[view]?.();
   if (dr) { const i = $('#ci'); if (i) { i.value = dr; i.focus(); } }
   document.querySelectorAll('[data-k]').forEach(n => n.classList.toggle('on', n.dataset.k === view)); hd();
 }
@@ -697,6 +765,7 @@ function start() {
   sb('agenda_bk', 'agenda_bk');
   if (st) { sb('tatib', 'tatib'); sb('kasus', 'kasus', S.role === 'walikelas' ? ['kelas', S.kelas] : S.role === 'wakasek' ? ['tahap', 3] : null); }
   if (st && S.role !== 'wakasek') { sb('kelas', 'kelas'); sb('users', 'users', w); sb('bimbingan_sesi', 'bimbingan_sesi', w); }
+  if (S.role === 'gurubk' || S.role === 'walikelas') { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 3); sb('absensi', 'absensi', S.role === 'walikelas' ? ['kelas', S.kelas] : ['tanggal', '>=', ym(d) + '-01']); }
   if (g()) { sb('admins', 'admins'); sb('catatan_pribadi', 'catatan_pribadi'); sb('chats', 'chats'); }
   DB.get('pengaturan', 'sekolah').then(s => { if (s) { D.sekolah = s; hd(); } }).catch(() => {});
   view = 'dashboard'; $('#login').classList.add('hidden'); $('#shell').classList.remove('hidden'); $('#pv').classList.toggle('hidden', !IS_PREVIEW); render();
