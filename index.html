@@ -11,7 +11,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20512%20512%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%233b6cf0%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%231e3a8a%27/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%27112%27%20fill%3D%27url%28%23g%29%27/%3E%3Cpath%20d%3D%27M256%20150c-40-24-90-30-130-18v226c40-12%2090-6%20130%2018%2040-24%2090-30%20130-18V132c-40-12-90-6-130%2018z%27%20fill%3D%27%23fff%27/%3E%3Cpath%20d%3D%27M256%20150v226%27%20stroke%3D%27%233b6cf0%27%20stroke-width%3D%2714%27/%3E%3C/svg%3E">
 <title>BISA - Buku Bimbingan Siswa Digital</title>
 <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22BISA%20-%20Buku%20Bimbingan%20Siswa%20Digital%22%2C%22short_name%22%3A%22BISA%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22orientation%22%3A%22portrait%22%2C%22background_color%22%3A%22%23f4f6fb%22%2C%22theme_color%22%3A%22%232457d6%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage/svg%2Bxml%2C%253Csvg%2520xmlns%253D%2527http%253A//www.w3.org/2000/svg%2527%2520viewBox%253D%25270%25200%2520512%2520512%2527%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2527g%2527%2520x1%253D%25270%2527%2520y1%253D%25270%2527%2520x2%253D%25271%2527%2520y2%253D%25271%2527%253E%253Cstop%2520offset%253D%25270%2527%2520stop-color%253D%2527%25233b6cf0%2527/%253E%253Cstop%2520offset%253D%25271%2527%2520stop-color%253D%2527%25231e3a8a%2527/%253E%253C/linearGradient%253E%253C/defs%253E%253Crect%2520width%253D%2527512%2527%2520height%253D%2527512%2527%2520rx%253D%2527112%2527%2520fill%253D%2527url%2528%2523g%2529%2527/%253E%253Cpath%2520d%253D%2527M256%2520150c-40-24-90-30-130-18v226c40-12%252090-6%2520130%252018%252040-24%252090-30%2520130-18V132c-40-12-90-6-130%252018z%2527%2520fill%253D%2527%2523fff%2527/%253E%253Cpath%2520d%253D%2527M256%2520150v226%2527%2520stroke%253D%2527%25233b6cf0%2527%2520stroke-width%253D%252714%2527/%253E%253C/svg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image/svg%2Bxml%22%2C%22purpose%22%3A%22any%22%7D%5D%7D">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -58,10 +58,12 @@ body.pc #cards{position:static!important;overflow:visible!important}
 <body>
 <div id="root" class="fixed inset-0 z-[2147483000] bg-[#f4f6fb] text-gray-800 overflow-hidden">
 
+<div id="land" class="absolute inset-0 overflow-y-auto z-[58]"></div>
 <!-- LOGIN -->
-<div id="login" class="relative h-full overflow-y-auto flex items-center justify-center p-4 bg-gradient-to-br from-[#1e3a8a] via-[#2457d6] to-[#93b4ff]">
+<div id="login" class="hidden relative h-full overflow-y-auto flex items-center justify-center p-4 bg-gradient-to-br from-[#1e3a8a] via-[#2457d6] to-[#93b4ff]">
  <div class="pointer-events-none absolute -top-24 -left-24 w-80 h-80 rounded-full bg-white/10 blur-2xl"></div><div class="pointer-events-none absolute -bottom-28 -right-20 w-96 h-96 rounded-full bg-indigo-300/20 blur-3xl"></div>
  <div class="relative w-full max-w-md glass rounded-3xl shadow-2xl p-7 border border-white/60">
+  <button type="button" onclick="A.toLand()" class="text-xs text-blue-700 font-semibold mb-3"><i class="fa-solid fa-arrow-left mr-1"></i>Kembali ke beranda</button>
   <div class="flex items-center gap-3 mb-6"><span class="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#3b6cf0] to-[#1e3a8a] text-white grid place-items-center shadow-lg"><i class="fa-solid fa-book-open text-xl"></i></span><div><h1 class="font-extrabold text-2xl text-[#1e3a8a] leading-none">BISA</h1><p class="text-xs text-gray-500 mt-1">Buku Bimbingan Siswa Digital</p></div></div>
   <div class="grid grid-cols-2 bg-slate-200/70 rounded-lg p-1 mb-4 text-sm font-semibold">
    <button type="button" id="tAdmin" onclick="A.tab('admin')" class="py-2 rounded-md bg-white shadow text-blue-700">Guru</button>
@@ -82,7 +84,7 @@ body.pc #cards{position:static!important;overflow:visible!important}
 <div id="shell" class="hidden h-full flex">
  <div id="ov" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden" onclick="A.sb()"></div>
  <aside id="sb" class="bg-gradient-to-b from-[#1e3a8a] via-[#2146b8] to-[#2457d6] text-white w-64 flex-shrink-0 h-full flex flex-col transition-transform -translate-x-full md:translate-x-0 fixed md:static z-50">
-  <div class="h-20 flex items-center px-5 gap-3 text-white"><span class="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center"><i class="fa-solid fa-book-open text-xl"></i></span><div><div class="font-extrabold text-xl leading-none">BISA</div><div class="text-[0.65rem] text-blue-100 mt-1">Bimbingan Siswa Digital</div></div></div>
+  <button onclick="A.land()" class="h-20 w-full flex items-center px-5 gap-3 text-white text-left" aria-label="Halaman beranda"><span class="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center"><i class="fa-solid fa-book-open text-xl"></i></span><span><span class="block font-extrabold text-xl leading-none">BISA</span><span class="block text-[0.65rem] text-blue-100 mt-1">Bimbingan Siswa Digital</span></span></button>
   <nav id="nv" class="flex-1 p-3 space-y-1 overflow-y-auto"></nav>
   <button onclick="A.out()" class="nb m-3"><i class="fa-solid fa-right-from-bracket w-5"></i>Keluar</button>
  </aside>
@@ -120,7 +122,6 @@ const firebaseConfig = {
   messagingSenderId: "415777614197",
   appId: "1:415777614197:web:81990f05740e33fb754b3c",
   measurementId: "G-FLGMHR32FH"
-
 };
 
 // ---------- PWA: service worker dari Blob (gagal dengan aman bila browser menolak) ----------
@@ -224,7 +225,7 @@ async function seed() { // Data dummy: HANYA saat IS_PREVIEW
   };
   mem['kasus/k1/langkah'] = {l1: {jenis:'identifikasi', tanggal:today(), uraian:'Nilai tugas menurun dua minggu terakhir.', oleh:'Bapak Dedi Hartono', tahap:1, akses:'semua', waktu:n-3600000}};
   mem['kasus/k2/langkah'] = {l2: {jenis:'konseling', tanggal:today(), uraian:'Wawancara awal, siswa bersedia bercerita.', oleh:'Ibu Citra Lestari', tahap:2, akses:'bk', waktu:n-1800000}};
-  mem.pengaturan = {sekolah: {namaSekolah:'SMP Contoh Nusantara', tahunAjaran:'2026/2027', batasPoin:40}};
+  mem.pengaturan = {sekolah: {namaSekolah:'SMP Contoh Nusantara', tahunAjaran:'2026/2027', batasPoin:40}, landing:{motto:'Sekolah Maju, Siswa Berprestasi', tahun:'2026/2027', sSiswa:'256', sKelas:'24', sAkt:'12', sHadir:'98%', p1t:'Bimbingan Klasikal', p1d:'Kelas IX-A, hari ini 10.00 WIB', p2t:'Jadwal Home Visit', p2d:'Kunjungan rumah minggu ini'}};
 }
 
 // ---------- State ----------
@@ -238,7 +239,7 @@ const nm = id => D.users.find(u => u.id === id)?.nama || '-';
 const ROLE = () => ({gurubk:'Guru BK', wakasek:'Wakasek Kesiswaan', walikelas:'Walikelas ' + (S.kelas || ''), siswa:'Siswa ' + (S.kelas || '')})[S.role];
 const RL = {gurubk:'Guru BK', walikelas:'Walikelas', wakasek:'Wakasek Kesiswaan'};
 const M = {
-  gurubk: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['kasus','Kasus','folder-open'],['konsultasi','Konsultasi','comments'],['layanan','Layanan Bimbingan','chalkboard-user'],['jurnal','Jurnal Harian','book-open'],['homevisit','Home Visit','house-user'],['agenda','Agenda','calendar'],['absensi','Absensi','clipboard-user'],['catatan','Catatan Pribadi','note-sticky'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
+  gurubk: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['kasus','Kasus','folder-open'],['konsultasi','Konsultasi','comments'],['layanan','Layanan Bimbingan','chalkboard-user'],['jurnal','Jurnal Harian','book-open'],['homevisit','Home Visit','house-user'],['agenda','Agenda','calendar'],['absensi','Absensi','clipboard-user'],['catatan','Catatan Pribadi','note-sticky'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['laporan','Laporan','chart-column'],['landing','Landing Page','image'],['pengaturan','Pengaturan','gear']],
   walikelas: [['dashboard','Dashboard','table-cells-large'],['siswa','Siswa','user-group'],['kasus','Kasus','folder-open'],['konsultasi','Sesi Konseling','comments'],['jurnal','Jurnal Harian','book-open'],['homevisit','Home Visit','house-user'],['agenda','Agenda','calendar'],['absensi','Absensi','clipboard-user'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['laporan','Laporan','chart-column'],['pengaturan','Pengaturan','gear']],
   wakasek: [['dashboard','Dashboard','table-cells-large'],['kasus','Kasus','folder-open'],['monitoring','Monitoring Kasus','eye'],['dokumen','Dokumen Cetak','print'],['agenda','Agenda','calendar'],['pengaturan','Pengaturan','gear']],
   siswa: [['dashboard','Beranda','house'],['agenda','Agenda','calendar'],['konsultasi','Konsultasi','comments'],['pengaturan','Profil','user']]
@@ -323,7 +324,7 @@ const A = window.A = {
   async out() {
     unsubs.forEach(u => u()); unsubs = []; mu?.(); mu = null; mt = null; ku?.(); ku = null; kt = null; ks = null; LK = []; resetD(); S = null; sel = null; Q = ''; view = 'dashboard';
     if (!IS_PREVIEW && auth) await F.signOut(auth);
-    $('#shell').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#lp').value = '';
+    $('#shell').classList.add('hidden'); $('#login').classList.add('hidden'); $('#lp').value = ''; loadPublic(); A.land();
     if (innerWidth < 768 && !$('#sb').classList.contains('-translate-x-full')) A.sb();
   },
   new: c => form('Tambah ' + FD(c)[0], FD(c)[1], {tanggal:today()}, v => sv(c, null, v)),
@@ -555,6 +556,30 @@ const A = window.A = {
   hvDone: id => { const x = D.homevisit.find(y => y.id === id); form('Hasil Kunjungan - ' + x.nama, [f('tanggal', 'Tanggal pelaksanaan', 'date'), f('ditemui', 'Yang ditemui (nama dan hubungan)'), f('kondisi', 'Kondisi rumah / lingkungan', 'textarea'), f('hasil', 'Hasil kunjungan', 'textarea'), f('tindak', 'Tindak lanjut', 'textarea', null, false)], {...x, tanggal:x.tanggal <= today() ? x.tanggal : today()}, async v => { await DB.set('homevisit', id, {tanggal:v.tanggal, ditemui:v.ditemui.trim(), kondisi:v.kondisi.trim(), hasil:v.hasil.trim(), tindak:(v.tindak || '').trim(), status:'Selesai', updated:Date.now()}); toast('Hasil kunjungan tersimpan'); }); },
   hvDoc: (id, t) => { const x = D.homevisit.find(y => y.id === id); if (x) showPaper(HVDOC[t](x)); },
   rmHV: id => ask('Hapus data home visit?', 'Data kunjungan tidak dapat dikembalikan.', async () => { await DB.del('homevisit', id); toast('Data dihapus'); }),
+  land: () => { renderLand(); $('#land').classList.remove('hidden'); },
+  closeLand: () => $('#land').classList.add('hidden'),
+  toLand() { $('#login').classList.add('hidden'); A.land(); },
+  toLogin() { $('#land').classList.add('hidden'); $('#login').classList.remove('hidden'); },
+  cta() { S ? A.closeLand() : A.toLogin(); },
+  sc: id => $('#' + id)?.scrollIntoView?.({behavior:'smooth'}),
+  guide: () => info('Panduan Penggunaan', `<div class="whitespace-pre-wrap">${e((LAND.panduan || '') || LD.panduan)}</div>`),
+  openMenu: k => { if (!S) return A.toLogin(); if (!M[S.role].some(x => x[0] === k)) return toast('Menu ini tidak tersedia untuk peran Anda', 1); A.closeLand(); A.go(k); },
+  autoStat: () => { const s = liveStats(); Object.entries(s).forEach(([k, val]) => { const i = $(`[name="${k}"]`); if (i) i.value = val === '-' ? '' : val; }); toast('Terisi dari data. Tekan Simpan untuk menerapkan.'); },
+  async saveLand(ev) {
+    ev.preventDefault(); const fd = new FormData(ev.target), o = {};
+    Object.keys(LD).forEach(k => { if (fd.get(k) !== null && fd.get(k) !== undefined) o[k] = String(fd.get(k)).trim().slice(0, k === 'panduan' ? 2000 : 400); });
+    try { await DB.set('pengaturan', 'landing', o); LAND = {...LAND, ...o}; toast('Landing page tersimpan'); renderLand(); } catch (x) { toast('Gagal menyimpan: ' + (x.code || x.message), 1); }
+  },
+  async img(k, file, maxW, type) {
+    if (!file) return;
+    try {
+      const bmp = await createImageBitmap(file), sc = Math.min(1, maxW / bmp.width), c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc); c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      let q = .78, u = c.toDataURL(type, q); while (u.length > 600000 && q > .35) { q -= .1; u = c.toDataURL(type, q); }
+      if (u.length > 600000) throw {m:'Gambar terlalu besar. Pilih gambar yang lebih kecil.'};
+      await DB.set('pengaturan', 'landing', {[k]:u}); LAND[k] = u; toast('Gambar tersimpan'); render(); renderLand();
+    } catch (x) { toast(x.m || 'Gagal memproses gambar: ' + (x.code || x.message || ''), 1); }
+  },
+  async imgDel(k) { try { await DB.set('pengaturan', 'landing', {[k]:''}); LAND[k] = ''; toast('Gambar dihapus'); render(); renderLand(); } catch (x) { toast('Gagal: ' + (x.code || x.message), 1); } },
   rep: (k, v) => { R[k] = v; render(); },
   csv() {
     const safe = x => { const s = String(x ?? ''); return '"' + (/^[=+\-@]/.test(s) ? "'" + s : s).replace(/"/g, '""') + '"'; };
@@ -759,6 +784,57 @@ const layananFields = j => [f('tanggal', 'Tanggal', 'date'), f('mulai', 'Jam mul
   f('metode', 'Metode', 'select', METODE), f('uraian', 'Pelaksanaan / uraian kegiatan', 'textarea'), f('hasil', 'Hasil / evaluasi', 'textarea', null, false), f('tindak', 'Tindak lanjut', 'textarea', null, false)];
 const hvFields = ed => [f('siswaId', 'Siswa', 'select', sisOpt()), f('tanggal', 'Tanggal kunjungan', 'date'), f('jam', 'Jam', 'time', null, false), f('alamat', 'Alamat tujuan'), f('tujuan', 'Tujuan kunjungan', 'select', TUJUAN), f('kasusId', 'Terkait kasus (opsional)', 'select', [['', '- Tidak terkait -'], ...D.kasus.filter(k => k.status === 'Terbuka').map(k => [k.id, k.nama + ' - ' + k.kategori])], false), f('rencana', 'Rencana / hal yang akan dibahas', 'textarea', null, false), ...(ed ? [f('status', 'Status', 'select', ['Direncanakan', 'Selesai', 'Batal'])] : [])];
 
+// ---------- Landing page dinamis ----------
+const LD = {sambutan:'Selamat Datang di', namaApp:'BISA', subjudul:'Bimbingan Siswa Digital', tagline:'Mendampingi, Membimbing, dan Menginspirasi untuk Masa Depan yang Lebih Baik', btn1:'Mulai Sekarang', btn2:'Panduan Penggunaan',
+  panduan:'1. Guru masuk lewat tab Guru, siswa lewat tab Siswa dengan NIS dan password dari kartu login.\n2. Guru BK dan Walikelas mencatat kasus, absensi, jurnal, layanan, dan home visit dari menu di sebelah kiri.\n3. Siswa dapat melihat agenda dan berkonsultasi langsung dengan Guru BK.\n4. Seluruh data bersifat rahasia dan hanya dibuka oleh pihak yang berwenang.',
+  motto:'', instansi:'', f1t:'Catatan Pribadi', f1d:'Kelola catatan dan perkembangan siswa', f2t:'Bimbingan', f2d:'Pantau dan arahkan perkembangan siswa', f3t:'Laporan', f3d:'Akses laporan secara lengkap', f4t:'Jadwal', f4d:'Atur jadwal bimbingan dengan mudah', f5t:'Pengaturan', f5d:'Kelola data dan pengaturan aplikasi',
+  tahun:'', sSiswa:'', sKelas:'', sAkt:'', sHadir:'', judulInfo:'Pengumuman Terbaru', p1t:'', p1d:'', p2t:'', p2d:'', p3t:'', p3d:'',
+  quote:'Setiap siswa berhak mendapatkan bimbingan terbaik untuk meraih masa depan yang', quoteSorot:'gemilang.', quoteBtn:'Mari Bersama Membangun Generasi Unggul', footQuote:'“Bersama BISA, Wujudkan Siswa yang Cerdas, Berkarakter, dan Berprestasi”'};
+let LAND = {};
+const imgOk = s => /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(s || '') ? s : '';
+const win = Array.from({length:12}, (_, i) => `<rect x="${120 + (i % 6) * 65}" y="${215 + Math.floor(i / 6) * 70}" width="40" height="40" rx="4"/>`).join('');
+const HERO_SVG = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520"><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe9f5"/><stop offset="1" stop-color="#e9f8f2"/></linearGradient></defs><rect width="800" height="520" fill="url(#s)"/><circle cx="660" cy="90" r="46" fill="#ffe08a"/><g fill="#fff" opacity=".9"><ellipse cx="160" cy="90" rx="70" ry="22"/><ellipse cx="230" cy="105" rx="50" ry="18"/></g><rect x="90" y="190" width="420" height="230" rx="10" fill="#f7fbff"/><rect x="90" y="170" width="420" height="30" rx="8" fill="#2d9d8f"/><g fill="#8ecdf0">${win}</g><rect x="270" y="330" width="60" height="90" fill="#2d9d8f"/><circle cx="580" cy="330" r="70" fill="#4fb987"/><rect x="570" y="380" width="20" height="60" fill="#8a6a45"/><circle cx="680" cy="355" r="52" fill="#6cc79a"/><rect x="673" y="395" width="16" height="50" fill="#8a6a45"/><rect y="430" width="800" height="90" fill="#7ccf9e"/></svg>`);
+const SPROUT = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220"><ellipse cx="100" cy="195" rx="85" ry="22" fill="#5b3a29"/><path d="M100 190C100 150 100 110 100 80" stroke="#3d9a4a" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M100 110C60 110 35 85 35 55 75 55 100 80 100 110Z" fill="#6cc04a"/><path d="M100 90C140 90 168 65 168 30 125 32 100 58 100 90Z" fill="#8bd45a"/></svg>');
+const rel = ts => { const m = Math.max(0, Math.floor((Date.now() - ts) / 60000)); return m < 1 ? 'baru saja' : m < 60 ? m + ' menit yang lalu' : m < 1440 ? Math.floor(m / 60) + ' jam yang lalu' : Math.floor(m / 1440) + ' hari yang lalu'; };
+const liveOn = () => S && (S.role === 'gurubk' || S.role === 'walikelas');
+const liveStats = () => {
+  const t = today(), m = ym(new Date()); let h = 0, tot = 0;
+  D.absensi.filter(a => a.tanggal?.startsWith(m)).forEach(a => Object.values(a.rekap || {}).forEach(s => { tot++; if (s === 'H' || s === 'T') h++; }));
+  return {sSiswa:String(D.users.length), sKelas:String(D.kelas.length), sAkt:String(D.layanan.filter(x => x.tanggal === t).length + D.jurnal.filter(x => x.tanggal === t).length + D.homevisit.filter(x => x.tanggal === t).length + D.bimbingan_sesi.filter(x => x.tanggal === t).length), sHadir:tot ? Math.round(h / tot * 100) + '%' : '-'};
+};
+const recent = () => [...D.layanan.map(x => ({t:'Layanan ' + x.jenis, s:x.topik, ts:x.updated || Date.parse(x.tanggal), i:'chalkboard-user', c:'from-sky-400 to-blue-500'})), ...D.homevisit.map(x => ({t:'Home Visit', s:`${x.nama} - ${x.status}`, ts:x.updated || Date.parse(x.tanggal), i:'house-user', c:'from-emerald-400 to-green-500'})), ...D.jurnal.filter(x => x.uid === S.uid).map(x => ({t:'Jurnal Harian', s:x.kegiatan, ts:x.updated || Date.parse(x.tanggal), i:'pen-to-square', c:'from-violet-400 to-purple-500'})), ...D.bimbingan_sesi.map(x => ({t:'Bimbingan Konseling', s:'Siswa: ' + nm(x.siswaId), ts:Date.parse(x.tanggal), i:'comments', c:'from-cyan-400 to-teal-500'}))].filter(x => x.ts).sort((a, b) => b.ts - a.ts).slice(0, 3).map(x => ({...x, w:rel(x.ts)}));
+const landHtml = () => {
+  const L = k => (LAND[k] ?? '') || LD[k] || '', live = liveOn(), hero = imgOk(LAND.heroImg) || HERO_SVG, logo = imgOk(LAND.logoImg), inst = LAND.instansi || D.sekolah.namaSekolah || '';
+  const mark = (c = 'w-10 h-10') => logo ? `<img src="${logo}" alt="" class="${c} object-contain">` : `<span class="${c} rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white grid place-items-center"><i class="fa-solid fa-book-open"></i></span>`;
+  const st = live ? liveStats() : {sSiswa:L('sSiswa'), sKelas:L('sKelas'), sAkt:L('sAkt'), sHadir:L('sHadir')}, showSt = Object.values(st).some(v => v && v !== '-');
+  const acts = live ? recent() : [1, 2, 3].filter(i => L('p' + i + 't')).map(i => ({t:L('p' + i + 't'), s:L('p' + i + 'd'), i:['bullhorn', 'calendar-check', 'circle-info'][i - 1], c:['from-sky-400 to-blue-500', 'from-emerald-400 to-green-500', 'from-violet-400 to-purple-500'][i - 1]}));
+  const panels = [showSt, acts.length > 0, true], n = panels.filter(Boolean).length, span = n === 3 ? ['lg:col-span-5', 'lg:col-span-4', 'lg:col-span-3'] : n === 2 ? ['lg:col-span-7', 'lg:col-span-5'] : ['lg:col-span-12'];
+  let si = 0; const sp = () => span[si++];
+  const nav = [['Beranda', 'top'], ['Layanan', 'fitur'], ['Ringkasan', 'ringkasan'], ['Info', 'info']];
+  const feats = [['file-pen', 'from-blue-500 to-blue-600', 'catatan'], ['users', 'from-emerald-500 to-green-600', 'kasus'], ['chart-column', 'from-amber-400 to-orange-500', 'laporan'], ['calendar-days', 'from-violet-500 to-purple-600', 'agenda'], ['gear', 'from-teal-500 to-emerald-600', 'pengaturan']];
+  const tiles = [['graduation-cap', 'sSiswa', 'Total Siswa', 'bg-emerald-50 text-emerald-600'], ['users', 'sKelas', 'Kelas', 'bg-sky-50 text-sky-600'], ['clipboard-list', 'sAkt', 'Aktivitas Hari Ini', 'bg-amber-50 text-amber-500'], ['circle-check', 'sHadir', 'Kehadiran Siswa', 'bg-violet-50 text-violet-600']];
+  return `<div class="min-h-full bg-gradient-to-br from-[#e3f6f1] via-white to-[#e6f1fb] text-[#0b3b45] relative overflow-x-hidden">
+  <header class="sticky top-0 z-20 px-3 md:px-8 pt-3"><div class="glass rounded-full shadow-lg px-3 md:px-5 py-2 flex items-center gap-3 max-w-7xl mx-auto">
+    <button onclick="A.sc('top')" class="flex items-center gap-2 text-left" aria-label="Beranda">${mark()}<span><b class="text-xl font-extrabold text-[#0b4a54] leading-none block">${e(L('namaApp'))}</b><span class="text-[10px] text-slate-500 hidden sm:block">${e(L('subjudul'))}</span></span></button>
+    <nav class="hidden md:flex items-center gap-1 mx-auto text-sm font-semibold text-slate-700">${nav.map(([l, id], i) => `<button onclick="A.sc('${id}')" class="px-4 py-2 rounded-full ${i === 0 ? 'bg-gradient-to-r from-emerald-700 to-teal-600 text-white' : 'hover:bg-emerald-50'}">${l}</button>`).join('')}<button onclick="A.guide()" class="px-4 py-2 rounded-full hover:bg-emerald-50">Bantuan</button></nav>
+    <div class="ml-auto flex items-center gap-2">${S ? `${live ? `<button onclick="A.notif()" class="relative w-10 h-10 grid place-items-center text-slate-600" aria-label="Pemberitahuan"><i class="fa-regular fa-bell text-lg"></i>${notifs().length ? `<span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full">${notifs().length}</span>` : ''}</button>` : ''}<span class="hidden sm:block text-right leading-tight mr-1"><b class="text-sm block">${e(S.nama)}</b><span class="text-xs text-slate-500">${e(ROLE())}</span></span><button onclick="A.closeLand()" class="bg-gradient-to-r from-emerald-700 to-teal-600 text-white rounded-full px-4 py-2 text-sm font-bold">Buka Aplikasi</button>` : '<button onclick="A.toLogin()" class="bg-gradient-to-r from-emerald-700 to-teal-600 text-white rounded-full px-5 py-2 text-sm font-bold shadow">Masuk</button>'}</div></div>
+    <nav class="md:hidden flex gap-2 overflow-x-auto py-2 text-xs font-semibold">${nav.map(([l, id]) => `<button onclick="A.sc('${id}')" class="px-3 py-1.5 rounded-full bg-white/80 whitespace-nowrap">${l}</button>`).join('')}<button onclick="A.guide()" class="px-3 py-1.5 rounded-full bg-white/80 whitespace-nowrap">Bantuan</button></nav></header>
+  <section id="top" class="relative px-4 md:px-8 pt-6 md:pt-10 pb-16"><div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 items-center">
+    <div><p class="text-2xl md:text-3xl font-bold text-[#0b4a54]">${e(L('sambutan'))}</p><h1 class="text-7xl md:text-[8.5rem] font-extrabold text-[#0b3b45] leading-[.95] tracking-tight">${e(L('namaApp'))}</h1><h2 class="text-2xl md:text-4xl font-extrabold text-[#0f8f7e] mt-1">${e(L('subjudul'))}</h2>
+      <p class="italic font-semibold mt-4 max-w-md text-base md:text-lg">${e(L('tagline'))}</p><div class="h-1 w-16 rounded bg-amber-400 mt-3"></div>
+      <div class="flex flex-wrap gap-3 mt-6"><button onclick="A.cta()" class="bg-gradient-to-r from-emerald-700 to-teal-600 text-white rounded-full px-6 py-3 font-bold shadow-lg shadow-emerald-900/20"><i class="fa-solid fa-rocket mr-2"></i>${e(L('btn1'))} <i class="fa-solid fa-arrow-right ml-1"></i></button><button onclick="A.guide()" class="rounded-full border-2 border-[#0b4a54] text-[#0b4a54] px-6 py-3 font-bold bg-white/60"><i class="fa-solid fa-book-open mr-2"></i>${e(L('btn2'))}</button></div></div>
+    <div class="relative"><img src="${hero}" alt="" class="rounded-[2rem] w-full h-60 md:h-[26rem] object-cover shadow-2xl shadow-teal-900/20">${L('motto') ? `<div class="absolute -top-3 right-2 md:-top-6 md:right-4 text-right leading-tight text-[#0b4a54] font-semibold rotate-[-6deg] bg-white/70 rounded-2xl px-3 py-1 text-xl md:text-3xl" style="font-family:Caveat,cursive">${e(L('motto'))}<div class="h-1 w-24 rounded bg-amber-400 ml-auto mt-1"></div></div>` : ''}</div></div>
+    <svg class="absolute bottom-0 left-0 w-full h-16 md:h-24" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0,80C300,130 600,20 900,70 1150,105 1300,50 1440,30L1440,120 0,120Z" fill="#0f8f7e" opacity=".85"/><path d="M0,100C350,60 700,130 1040,90 1220,70 1340,80 1440,60L1440,120 0,120Z" fill="#f5b82e" opacity=".6"/></svg></section>
+  <section id="fitur" class="px-4 md:px-8 -mt-8 relative z-10"><div class="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl shadow-teal-900/10 p-4 grid grid-cols-2 md:grid-cols-5 gap-2 md:divide-x divide-slate-100">${feats.map(([ic, gr, key], i) => `<button onclick="A.openMenu('${key}')" class="flex items-center gap-3 p-3 text-left rounded-2xl hover:bg-emerald-50/60 transition"><span class="w-12 h-12 md:w-14 md:h-14 flex-shrink-0 rounded-2xl bg-gradient-to-br ${gr} text-white grid place-items-center text-xl shadow-lg"><i class="fa-solid fa-${ic}"></i></span><span class="min-w-0"><b class="block text-sm md:text-base">${e(L('f' + (i + 1) + 't'))}</b><span class="text-xs text-slate-500 leading-snug block">${e(L('f' + (i + 1) + 'd'))}</span></span></button>`).join('')}</div></section>
+  <section id="ringkasan" class="px-4 md:px-8 mt-6"><div id="info" class="max-w-7xl mx-auto grid lg:grid-cols-12 gap-4">
+    ${showSt ? `<div class="${sp()} bg-white rounded-2xl shadow-lg overflow-hidden"><div class="bg-gradient-to-r from-[#0b5563] to-[#0f7a74] text-white px-4 py-3 flex justify-between items-center"><b><i class="fa-solid fa-chart-column mr-2"></i>Ringkasan Data</b><span class="text-xs">${live ? 'Data langsung' : L('tahun') ? 'Tahun Ajaran ' + e(L('tahun')) : ''}</span></div><div class="p-3 grid grid-cols-2 gap-3">${tiles.map(([ic, k, l, c]) => `<div class="${c.split(' ')[0]} rounded-2xl p-3 flex items-center gap-3"><i class="fa-solid fa-${ic} text-2xl ${c.split(' ')[1]}"></i><span><b class="text-2xl block leading-none">${e(st[k] || '-')}</b><span class="text-xs text-slate-600">${l}</span></span></div>`).join('')}</div></div>` : ''}
+    ${acts.length ? `<div class="${sp()} bg-white rounded-2xl shadow-lg overflow-hidden"><div class="bg-gradient-to-r from-[#0b5563] to-[#0f7a74] text-white px-4 py-3"><b><i class="fa-solid fa-clock-rotate-left mr-2"></i>${live ? 'Aktivitas Terbaru' : e(L('judulInfo'))}</b></div><div class="p-2">${acts.map(a => `<div class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50"><span class="w-11 h-11 flex-shrink-0 rounded-full bg-gradient-to-br ${a.c} text-white grid place-items-center"><i class="fa-solid fa-${a.i}"></i></span><span class="min-w-0"><b class="block text-sm truncate">${e(a.t)}</b><span class="text-xs text-slate-500 block truncate">${e(a.s)}${a.w ? ' - ' + a.w : ''}</span></span></div>`).join('')}</div></div>` : ''}
+    <div class="${sp()} relative rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-[#0b6b5f] to-[#14a085] text-white p-5 min-h-[14rem]"><i class="fa-solid fa-quote-left text-3xl text-amber-300"></i><p class="font-bold italic text-lg md:text-xl leading-snug mt-2 max-w-[75%]">${e(L('quote'))} <span class="text-amber-300">${e(L('quoteSorot'))}</span></p><button onclick="A.cta()" class="mt-4 bg-amber-300 text-[#0b3b45] rounded-full px-4 py-2 text-xs md:text-sm font-bold max-w-[70%]">${e(L('quoteBtn'))} <i class="fa-solid fa-arrow-right ml-1"></i></button><img src="${SPROUT}" alt="" class="absolute bottom-0 right-0 w-28 md:w-32 opacity-95"></div></div></section>
+  <footer class="mt-8 bg-white/70 border-t border-white"><div class="max-w-7xl mx-auto px-4 md:px-8 py-5 grid md:grid-cols-3 gap-3 items-center text-xs text-slate-600"><span class="flex items-center gap-2">${mark('w-8 h-8')}<b class="text-[#0b4a54] text-base">${e(L('namaApp'))}</b><span class="border-l pl-2">${e(L('subjudul'))}</span></span><span class="italic md:text-center">${e(L('footQuote'))}</span><span class="md:text-right">${inst ? `<b class="text-[#0b4a54]">${e(inst)}</b>` : ''}</span></div><p class="text-center text-xs text-slate-500 pb-4">Dibuat dengan <i class="fa-solid fa-heart text-red-500"></i> oleh Kakang Asmil &middot; <i class="fa-regular fa-copyright"></i> 2026 BISA - Bimbingan Siswa Digital</p></footer></div>`;
+};
+const renderLand = () => { const el = $('#land'); if (el) el.innerHTML = landHtml(); };
+const loadPublic = async () => { try { const [l, s] = await Promise.all([DB.get('pengaturan', 'landing'), DB.get('pengaturan', 'sekolah')]); LAND = l || {}; if (s) D.sekolah = s; } catch {} renderLand(); };
+
 const V = {
   dashboard() {
     if (S.role === 'wakasek') return hdr('Dashboard', 'Kasus yang menunggu keputusan Kesiswaan') + kasusBlock(false);
@@ -852,6 +928,19 @@ const V = {
       `<div class="card mb-4 flex flex-wrap gap-3 items-end noprint"><label class="text-sm font-medium">Dari<input type="date" class="inp" value="${R.from}" onchange="A.rep('from',this.value)"></label><label class="text-sm font-medium">Sampai<input type="date" class="inp" value="${R.to}" onchange="A.rep('to',this.value)"></label></div>` +
       `<div class="hidden print:block mb-3 text-sm"><b>${e(D.sekolah.namaSekolah || '')}</b><br>Laporan ${tabs.find(t => t[0] === RT)[1]} &middot; ${fmtD(R.from)} s.d. ${fmtD(R.to)}</div>` + body;
   },
+  landing() {
+    const v = k => e(LAND[k] ?? ''), inp = (k, l, max = 120) => `<label class="block text-sm font-medium">${l}<input name="${k}" maxlength="${max}" class="inp" value="${v(k)}" placeholder="${e(LD[k] || '')}"></label>`,
+      ta = (k, l, max = 400, rows = 3) => `<label class="block text-sm font-medium">${l}<textarea name="${k}" maxlength="${max}" rows="${rows}" class="inp" placeholder="${e(LD[k] || '')}">${v(k)}</textarea></label>`,
+      up = (k, l, w, t) => `<div class="text-sm font-medium">${l}<div class="flex items-center gap-3 mt-1">${imgOk(LAND[k]) ? `<img src="${LAND[k]}" alt="" class="w-20 h-14 object-cover rounded-lg border">` : '<span class="w-20 h-14 rounded-lg bg-slate-100 grid place-items-center text-slate-400"><i class="fa-regular fa-image"></i></span>'}<input type="file" accept="image/*" class="text-xs" onchange="A.img('${k}',this.files[0],${w},'${t}')">${imgOk(LAND[k]) ? `<button type="button" onclick="A.imgDel('${k}')" class="text-red-500 text-xs">Hapus</button>` : ''}</div></div>`, fs = (t, b) => `<div class="card mb-4"><h3 class="font-bold mb-3">${t}</h3><div class="grid sm:grid-cols-2 gap-3">${b}</div></div>`;
+    return hdr('Landing Page', 'Atur teks dan gambar halaman beranda publik. Kolom kosong memakai teks bawaan (ditampilkan sebagai contoh abu-abu).', '<button type="button" onclick="A.land()" class="btn2"><i class="fa-solid fa-eye mr-1"></i>Pratinjau</button>') +
+      fs('Gambar', up('heroImg', 'Foto utama (disarankan lanskap)', 1400, 'image/jpeg') + up('logoImg', 'Logo (opsional)', 256, 'image/webp')) +
+      `<form onsubmit="A.saveLand(event)">` + fs('Bagian utama', inp('sambutan', 'Sapaan') + inp('namaApp', 'Nama aplikasi') + inp('subjudul', 'Subjudul') + inp('motto', 'Motto (teks miring di atas foto)') + `<div class="sm:col-span-2">${ta('tagline', 'Tagline')}</div>` + inp('btn1', 'Teks tombol utama') + inp('btn2', 'Teks tombol panduan') + `<div class="sm:col-span-2">${ta('panduan', 'Isi panduan penggunaan (tampil saat tombol panduan ditekan)', 2000, 5)}</div>`) +
+      fs('Lima menu pintasan', [1, 2, 3, 4, 5].map(i => inp('f' + i + 't', 'Judul menu ' + i, 40) + inp('f' + i + 'd', 'Deskripsi menu ' + i, 80)).join('')) +
+      fs('Ringkasan data (tampil ke pengunjung sebelum login)', inp('tahun', 'Tahun ajaran (mis. 2026/2027)', 20) + `<div class="flex items-end"><button type="button" onclick="A.autoStat()" class="btn2 w-full"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Isi otomatis dari data</button></div>` + inp('sSiswa', 'Total siswa', 10) + inp('sKelas', 'Jumlah kelas', 10) + inp('sAkt', 'Aktivitas hari ini', 10) + inp('sHadir', 'Kehadiran siswa (mis. 98%)', 10) + '<p class="sm:col-span-2 text-xs text-gray-500">Angka ini dilihat publik. Setelah login, Guru BK dan Walikelas melihat data langsung, bukan angka ini.</p>') +
+      fs('Pengumuman (aktivitas untuk pengunjung)', inp('judulInfo', 'Judul kotak') + '<span></span>' + [1, 2, 3].map(i => inp('p' + i + 't', 'Pengumuman ' + i + ' - judul', 60) + inp('p' + i + 'd', 'Pengumuman ' + i + ' - keterangan', 100)).join('')) +
+      fs('Kutipan & footer', `<div class="sm:col-span-2">${ta('quote', 'Kutipan', 200, 2)}</div>` + inp('quoteSorot', 'Kata yang disorot (kuning)', 40) + inp('quoteBtn', 'Teks tombol kutipan', 60) + inp('instansi', 'Nama madrasah/sekolah (footer)', 80) + `<div class="sm:col-span-2">${inp('footQuote', 'Kutipan footer', 160)}</div>`) +
+      '<button class="btn1 w-full sm:w-auto">Simpan landing page</button></form>';
+  },
   pengaturan() {
     const adm = S.role !== 'siswa';
     return hdr('Pengaturan', adm ? 'Profil akun dan data sekolah.' : 'Profil siswa.') + `<div class="grid md:grid-cols-2 gap-4 max-w-4xl">
@@ -892,6 +981,7 @@ function render() {
   $('#content').innerHTML = '<div class="max-w-6xl mx-auto">' + (V[view] || V.dashboard)() + FOOT + '</div>'; H[view]?.();
   if (dr) { const i = $('#ci'); if (i) { i.value = dr; i.focus(); } }
   document.querySelectorAll('[data-k]').forEach(n => n.classList.toggle('on', n.dataset.k === view)); hd();
+  if (!$('#land').classList.contains('hidden')) renderLand();
 }
 function start() {
   const m = M[S.role], st = S.role !== 'siswa', w = S.role === 'walikelas' ? ['kelas', S.kelas] : null;
@@ -906,14 +996,15 @@ function start() {
   if (S.role === 'gurubk' || S.role === 'walikelas') { const y = new Date(); y.setFullYear(y.getFullYear() - 1); const s12 = ym(y) + '-01'; if (g()) sb('layanan', 'layanan', ['tanggal', '>=', s12]); sb('jurnal', 'jurnal', g() ? ['tanggal', '>=', s12] : ['uid', S.uid]); sb('homevisit', 'homevisit', g() ? null : ['kelas', S.kelas]); }
   if (g()) { sb('admins', 'admins'); sb('catatan_pribadi', 'catatan_pribadi'); sb('chats', 'chats'); }
   DB.get('pengaturan', 'sekolah').then(s => { if (s) { D.sekolah = s; hd(); } }).catch(() => {});
-  view = 'dashboard'; $('#login').classList.add('hidden'); $('#shell').classList.remove('hidden'); $('#pv').classList.toggle('hidden', !IS_PREVIEW); render();
+  view = 'dashboard'; $('#login').classList.add('hidden'); $('#land').classList.add('hidden'); $('#shell').classList.remove('hidden'); $('#pv').classList.toggle('hidden', !IS_PREVIEW); render();
 }
 
 // ---------- Inisialisasi ----------
 const offl = () => $('#off').classList.toggle('hidden', navigator.onLine !== false); globalThis.addEventListener?.('online', offl); globalThis.addEventListener?.('offline', offl); offl();
 (async () => {
+  renderLand();
   if (IS_PREVIEW) {
-    await seed();
+    await seed(); loadPublic();
     $('#demo').classList.remove('hidden');
     $('#demo').innerHTML = '<b>Akun demo (Mode Preview)</b><br>Guru BK: guru@bisa.test / guru123<br>Walikelas 7A: wali@bisa.test / wali123<br>Siswa: NIS 1001 / siswa123';
     return;
@@ -921,7 +1012,7 @@ const offl = () => $('#off').classList.toggle('hidden', navigator.onLine !== fal
   try {
     const V1 = 'https://www.gstatic.com/firebasejs/11.6.1/';
     const [a, b, c] = await Promise.all([import(V1 + 'firebase-app.js'), import(V1 + 'firebase-auth.js'), import(V1 + 'firebase-firestore.js')]);
-    F = {...a, ...b, ...c}; const app = F.initializeApp(firebaseConfig); auth = F.getAuth(app); db = F.getFirestore(app);
+    F = {...a, ...b, ...c}; const app = F.initializeApp(firebaseConfig); auth = F.getAuth(app); db = F.getFirestore(app); loadPublic();
     F.onAuthStateChanged(auth, async u => { // pulihkan sesi guru setelah refresh
       if (!u || S) return;
       const ad = await DB.get('admins', u.uid).catch(() => null);
